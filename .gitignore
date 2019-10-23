@@ -1,0 +1,8 @@
+# git ignore file
+
+# pycharm idea file
+.idea/
+__pycache__/
+
+# venv
+venv/
