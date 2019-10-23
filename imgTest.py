@@ -8,6 +8,7 @@ ex_circles = False
 lx, ly, px, py = 0, 0, 0, 0
 on_mouse = 0
 on_track_bar = False
+easy_circles = False
 
 
 def nothing(x):
@@ -30,6 +31,8 @@ def on_mouse_event(event, x, y, flag, param):
 
 
 o_img = cv.imread('D:/doc/pic/test2.jpg', cv.IMREAD_COLOR)
+img_width = o_img.shape[0]
+img_height = o_img.shape[1]
 
 while True:
     # read cam frame
@@ -57,6 +60,8 @@ while True:
     elif k == ord('s'):
         # extract circles in img
         ex_circles = not ex_circles
+    elif k == ord('a'):
+        easy_circles = not easy_circles
     elif k == ord('i'):
         # initial working variable
         # initial draw rectangle
@@ -66,23 +71,25 @@ while True:
         # initial track bar
         on_track_bar = False
         cv.destroyWindow('origin')
+
+    # loop
     if ex_circles:
         make_img = img.copy()
         blur_img = cv.medianBlur(make_img, 5)
-        zeros_img = np.zeros((img.shape[0], img.shape[1]), dtype=np.uint8)
+        gray_img = cv.cvtColor(blur_img, cv.COLOR_BGR2GRAY)
+        zeros_img = np.zeros((img_width, img_height), dtype=np.uint8)
 
         # cut img
-        cut_img = mv.hsv_cut_v(blur_img, 50, 255)
+        cut_img = mv.cut_value(gray_img, 40, 255)
         hist_img = cv.equalizeHist(cut_img)
-        cut_img = mv.cut_value(hist_img, 50, 255)
-        hist_img = cv.equalizeHist(cut_img)
-        cut_img = mv.cut_value(hist_img, 50, 255)
+        cut_img = mv.cut_value(hist_img, 40, 255)
+        cv.imshow('cutimg', cut_img)
 
         # contour
         contours, hierarchy = cv.findContours(cut_img, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE)
         # draw contour
         for cnt in contours:
-            if cv.contourArea(cnt) > 1000:
+            if cv.contourArea(cnt) > 3000:
                 cv.drawContours(zeros_img, [cnt], 0, 255, -1)
 
         cut_img = cv.bitwise_and(cut_img, cut_img, mask=zeros_img)
@@ -91,18 +98,66 @@ while True:
 
         # extract circles
         circles = cv.HoughCircles(cut_img, cv.HOUGH_GRADIENT, 1, 30,
-                                  param1=60, param2=60, minRadius=0, maxRadius=0)
+                                  param1=50, param2=50, minRadius=0, maxRadius=0)
         circles = np.uint16(np.around(circles))
 
         # draw circles
+        circle_img = img.copy()
         for c in circles[0, :]:
+            mask = np.zeros((img_width, img_height), dtype=np.uint8)
             center = (c[0], c[1])
             radius = c[2]
+
+            cv.circle(mask, center, radius, 255, -1)
+            std_img = cv.bitwise_and(cut_img, cut_img, mask=mask)
+            inv_std_img = np.where(std_img == 0, 1, 0)
+            extract_img = np.ma.array(std_img, mask=inv_std_img)
+            std = np.std(extract_img)
+            if std < 20:
+                cv.circle(circle_img, center, radius, (0, 255, 255), 2)
+                print(std)
             cv.circle(img, center, radius, (0, 255, 255), 2)
+        cv.imshow('circle', circle_img)
 
-        cv.imshow('img', img)
+    if easy_circles is True:
+        make_img = img.copy()
+        gau_img = cv.GaussianBlur(make_img, (5, 5), 0)
+        gray_img = cv.cvtColor(gau_img, cv.COLOR_BGR2GRAY)
 
-    # loop
+        hsv_img = cv.cvtColor(gau_img, cv.COLOR_BGR2HSV)
+        h, s, v = cv.split(hsv_img)
+        _, s_mask = cv.threshold(s, 50, 255, cv.THRESH_BINARY_INV)
+        cut_img = cv.bitwise_and(gray_img, gray_img, mask=s_mask)
+        cv.imshow('cuts', cut_img)
+        _, v_mask = cv.threshold(v, 50, 255, cv.THRESH_BINARY)
+        cut_img = cv.bitwise_and(cut_img, cut_img, mask=v_mask)
+        cv.imshow('cut', cut_img)
+
+        """
+        # extract circles
+        circles = cv.HoughCircles(gray_img, cv.HOUGH_GRADIENT, 1, 30,
+                                  param1=50, param2=50, minRadius=0, maxRadius=0)
+        circles = np.uint16(np.around(circles))
+
+        # draw circles
+        circle_img = img.copy()
+        for c in circles[0, :]:
+            mask = np.zeros((img_width, img_height), dtype=np.uint8)
+            center = (c[0], c[1])
+            radius = c[2]
+
+            cv.circle(mask, center, radius, 255, -1)
+            std_img = cv.bitwise_and(gray_img, gray_img, mask=mask)
+            inv_std_img = np.where(std_img == 0, 1, 0)
+            extract_img = np.ma.array(std_img, mask=inv_std_img)
+            std = np.std(extract_img)
+            if std < 20:
+                cv.circle(circle_img, center, radius, (0, 255, 255), 2)
+                print(std)
+            cv.circle(img, center, radius, (0, 255, 255), 2)
+        cv.imshow('circle', circle_img)
+        """
+
     if on_track_bar is True:
         # get track bar pos
         low_a, high_a, low_b, high_b, low_c, high_c = mv.get_track_bar_pos('origin')
