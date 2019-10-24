@@ -2,6 +2,7 @@
 import cv2 as cv
 import numpy as np
 import m_vision as mv
+import glob
 import serial
 
 ex_circles = False
@@ -9,6 +10,7 @@ lx, ly, px, py = 0, 0, 0, 0
 on_mouse = 0
 on_track_bar = False
 easy_circles = False
+img_count = 0
 
 
 def nothing(x):
@@ -30,7 +32,13 @@ def on_mouse_event(event, x, y, flag, param):
         on_mouse = 3
 
 
-o_img = cv.imread('D:/doc/pic/test2.jpg', cv.IMREAD_COLOR)
+images = [cv.imread(file) for file in glob.glob('D:/doc/pic/test/*.jpg')]
+for n, i in enumerate(images):
+    tem_img = cv.cvtColor(i, cv.COLOR_BGR2GRAY)
+    tem_img = cv.equalizeHist(tem_img)
+    tem_img = cv.cvtColor(tem_img, cv.COLOR_GRAY2BGR)
+    images[n] = tem_img
+o_img = images[0]
 img_width = o_img.shape[0]
 img_height = o_img.shape[1]
 
@@ -62,6 +70,11 @@ while True:
         ex_circles = not ex_circles
     elif k == ord('a'):
         easy_circles = not easy_circles
+    elif k == ord('n'):
+        img_count += 1
+        if img_count == len(images):
+            img_count = 0
+        o_img = images[img_count]
     elif k == ord('i'):
         # initial working variable
         # initial draw rectangle
@@ -70,7 +83,7 @@ while True:
         ex_circles = False
         # initial track bar
         on_track_bar = False
-        cv.destroyWindow('origin')
+        cv.destroyAllWindows()
 
     # loop
     if ex_circles:
@@ -121,21 +134,12 @@ while True:
 
     if easy_circles is True:
         make_img = img.copy()
-        gau_img = cv.GaussianBlur(make_img, (5, 5), 0)
-        gray_img = cv.cvtColor(gau_img, cv.COLOR_BGR2GRAY)
 
-        hsv_img = cv.cvtColor(gau_img, cv.COLOR_BGR2HSV)
-        h, s, v = cv.split(hsv_img)
-        _, s_mask = cv.threshold(s, 50, 255, cv.THRESH_BINARY_INV)
-        cut_img = cv.bitwise_and(gray_img, gray_img, mask=s_mask)
-        cv.imshow('cuts', cut_img)
-        _, v_mask = cv.threshold(v, 50, 255, cv.THRESH_BINARY)
-        cut_img = cv.bitwise_and(cut_img, cut_img, mask=v_mask)
-        cv.imshow('cut', cut_img)
+        cut_img = mv.img_filter(make_img)
+        cv.imshow('cut1', cut_img)
 
-        """
         # extract circles
-        circles = cv.HoughCircles(gray_img, cv.HOUGH_GRADIENT, 1, 30,
+        circles = cv.HoughCircles(cut_img, cv.HOUGH_GRADIENT, 1, 30,
                                   param1=50, param2=50, minRadius=0, maxRadius=0)
         circles = np.uint16(np.around(circles))
 
@@ -147,16 +151,15 @@ while True:
             radius = c[2]
 
             cv.circle(mask, center, radius, 255, -1)
-            std_img = cv.bitwise_and(gray_img, gray_img, mask=mask)
-            inv_std_img = np.where(std_img == 0, 1, 0)
-            extract_img = np.ma.array(std_img, mask=inv_std_img)
+            std_img = cv.bitwise_and(cut_img, cut_img, mask=mask)
+            mask = np.where(mask == 255, 0, 1)
+            extract_img = np.ma.array(std_img, mask=mask)
             std = np.std(extract_img)
-            if std < 20:
+            if std < 30:
                 cv.circle(circle_img, center, radius, (0, 255, 255), 2)
                 print(std)
             cv.circle(img, center, radius, (0, 255, 255), 2)
         cv.imshow('circle', circle_img)
-        """
 
     if on_track_bar is True:
         # get track bar pos
@@ -168,6 +171,12 @@ while True:
         elif k == ord('2'):
             # hsv track bar
             mv.hsv_track_bar(img, low_a, high_a, low_b, high_b, low_c, high_c)
+        elif k == ord('3'):
+            # rgb track bar use one
+            one_t = low_a
+            if one_t >= 255 - 100:
+                one_t = 255 - 100
+            mv.rgb_track_bar(img, one_t, one_t + 100, one_t, one_t + 100, one_t, one_t + 100)
 
     cv.imshow('origin', img)
 

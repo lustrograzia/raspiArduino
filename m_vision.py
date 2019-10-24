@@ -104,3 +104,11 @@ def hsv_track_bar(img, low_h=0, high_h=180, low_s=0, high_s=180, low_v=0, high_v
     hsv = cv.merge([h, s, v])
     hsv = cv.cvtColor(hsv, cv.COLOR_HSV2BGR)
     cv.imshow('hsv', hsv)
+
+
+def img_filter(img):
+    gray_img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+    hist_img = cv.equalizeHist(gray_img)
+    blur_img = cv.bilateralFilter(hist_img, 9, 75, 75)
+    #cut_img = cut_value(hist_img, 50, 255)
+    return blur_img
