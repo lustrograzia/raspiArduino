@@ -31,6 +31,7 @@ img_height = frame.shape[1]
 
 while True:
     # read cam frame
+    _, frame = cap.read()
     img = frame.copy()
 
     # mouse callback
@@ -47,6 +48,9 @@ while True:
     elif k == ord('s'):
         # extract circles in img
         ex_circles = not ex_circles
+    elif k == ord('w'):
+        # write img file
+        cv.imwrite('circles_img.jpg', img)
     elif k == ord('i'):
         # initial working variable
         # initial draw rectangle
@@ -65,6 +69,8 @@ while True:
         # extract circles
         circles = cv.HoughCircles(cut_img, cv.HOUGH_GRADIENT, 1, 30,
                                   param1=50, param2=50, minRadius=0, maxRadius=0)
+        if circles is None:
+            continue
         circles = np.uint16(np.around(circles))
 
         # draw circles
@@ -88,3 +94,4 @@ while True:
     cv.imshow('origin', img)
 
 cv.destroyAllWindows()
+

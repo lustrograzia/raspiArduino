@@ -34,9 +34,9 @@ def on_mouse_event(event, x, y, flag, param):
 
 images = [cv.imread(file) for file in glob.glob('D:/doc/pic/test/*.jpg')]
 for n, i in enumerate(images):
-    tem_img = cv.cvtColor(i, cv.COLOR_BGR2GRAY)
-    tem_img = cv.equalizeHist(tem_img)
-    tem_img = cv.cvtColor(tem_img, cv.COLOR_GRAY2BGR)
+    tem_img = cv.cvtColor(i, cv.COLOR_BGR2YUV)
+    tem_img[:,:,0] = cv.equalizeHist(tem_img[:,:,0])
+    tem_img = cv.cvtColor(tem_img, cv.COLOR_YUV2BGR)
     images[n] = tem_img
 o_img = images[0]
 img_width = o_img.shape[0]
