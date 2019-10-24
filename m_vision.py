@@ -107,8 +107,41 @@ def hsv_track_bar(img, low_h=0, high_h=180, low_s=0, high_s=180, low_v=0, high_v
 
 
 def img_filter(img):
-    gray_img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-    hist_img = cv.equalizeHist(gray_img)
+    yuv_img = cv.cvtColor(img, cv.COLOR_BGR2YUV)
+    hist_img = cv.equalizeHist(yuv_img[:, :, 0])
     blur_img = cv.bilateralFilter(hist_img, 9, 75, 75)
     #cut_img = cut_value(hist_img, 50, 255)
     return blur_img
+
+
+def easy_circle(img, img_width=640, img_height=480):
+    make_img = img.copy()
+    cut_img = img_filter(make_img)
+
+    # extract circles
+    circles = cv.HoughCircles(cut_img, cv.HOUGH_GRADIENT, 1, 30,
+                              param1=70, param2=50, minRadius=0, maxRadius=0)
+    if circles is None:
+        print('Not detected circles')
+        return img
+    circles = np.uint16(np.around(circles))
+
+    # draw circles
+    circle_img = img.copy()
+    best_circle = [100, 0, 0]
+    for c in circles[0, :]:
+        mask = np.ones((img_width, img_height), dtype=np.uint8)
+        center = (c[0], c[1])
+        radius = c[2]
+
+        cv.circle(mask, center, radius, 0, -1)
+        extract_img = np.ma.array(cut_img, mask=mask)
+        std = np.std(extract_img)
+
+        if std < best_circle[0]:
+            best_circle = [std, center, radius]
+        cv.circle(circle_img, center, radius, (0, 255, 255), 2)
+
+    cv.rectangle(img, [i - best_circle[2] for i in best_circle[1]], [i + best_circle[2] for i in best_circle[1]], (255, 0, 0), 2)
+
+    cv.imshow('all circles', circle_img)

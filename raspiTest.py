@@ -75,21 +75,22 @@ while True:
 
         # draw circles
         circle_img = img.copy()
+        best_circle = [100, 0, 0]
         for c in circles[0, :]:
-            mask = np.zeros((img_width, img_height), dtype=np.uint8)
+            mask = np.ones((img_width, img_height), dtype=np.uint8)
             center = (c[0], c[1])
             radius = c[2]
 
-            cv.circle(mask, center, radius, 255, -1)
-            std_img = cv.bitwise_and(cut_img, cut_img, mask=mask)
-            mask = np.where(mask == 255, 0, 1)
-            extract_img = np.ma.array(std_img, mask=mask)
+            cv.circle(mask, center, radius, 0, -1)
+            extract_img = np.ma.array(cut_img, mask=mask)
             std = np.std(extract_img)
-            if std < 30:
-                cv.circle(circle_img, center, radius, (0, 255, 255), 2)
-                print(std)
+
+            if std < best_circle[0]:
+                best_circle = [std, center, radius]
             cv.circle(img, center, radius, (0, 255, 255), 2)
+
         cv.imshow('circle', circle_img)
+        cv.imshow('all circles', img)
 
     cv.imshow('origin', img)
 

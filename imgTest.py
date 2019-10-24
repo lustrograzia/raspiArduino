@@ -33,11 +33,6 @@ def on_mouse_event(event, x, y, flag, param):
 
 
 images = [cv.imread(file) for file in glob.glob('D:/doc/pic/test/*.jpg')]
-for n, i in enumerate(images):
-    tem_img = cv.cvtColor(i, cv.COLOR_BGR2YUV)
-    tem_img[:,:,0] = cv.equalizeHist(tem_img[:,:,0])
-    tem_img = cv.cvtColor(tem_img, cv.COLOR_YUV2BGR)
-    images[n] = tem_img
 o_img = images[0]
 img_width = o_img.shape[0]
 img_height = o_img.shape[1]
@@ -83,6 +78,8 @@ while True:
         ex_circles = False
         # initial track bar
         on_track_bar = False
+        # initial easy circles
+        easy_circles = False
         cv.destroyAllWindows()
 
     # loop
@@ -96,7 +93,7 @@ while True:
         cut_img = mv.cut_value(gray_img, 40, 255)
         hist_img = cv.equalizeHist(cut_img)
         cut_img = mv.cut_value(hist_img, 40, 255)
-        cv.imshow('cutimg', cut_img)
+        cv.imshow('cut_img', cut_img)
 
         # contour
         contours, hierarchy = cv.findContours(cut_img, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE)
@@ -112,54 +109,32 @@ while True:
         # extract circles
         circles = cv.HoughCircles(cut_img, cv.HOUGH_GRADIENT, 1, 30,
                                   param1=50, param2=50, minRadius=0, maxRadius=0)
+        if circles is None:
+            print('Not detected circles')
+            continue
         circles = np.uint16(np.around(circles))
 
         # draw circles
         circle_img = img.copy()
+        best_circle = [100, 0, 0]
         for c in circles[0, :]:
-            mask = np.zeros((img_width, img_height), dtype=np.uint8)
+            mask = np.ones((img_width, img_height), dtype=np.uint8)
             center = (c[0], c[1])
             radius = c[2]
 
-            cv.circle(mask, center, radius, 255, -1)
-            std_img = cv.bitwise_and(cut_img, cut_img, mask=mask)
-            inv_std_img = np.where(std_img == 0, 1, 0)
-            extract_img = np.ma.array(std_img, mask=inv_std_img)
+            cv.circle(mask, center, radius, 0, -1)
+            extract_img = np.ma.array(cut_img, mask=mask)
             std = np.std(extract_img)
-            if std < 20:
-                cv.circle(circle_img, center, radius, (0, 255, 255), 2)
-                print(std)
+
+            if std < best_circle[0]:
+                best_circle = [std, center, radius]
             cv.circle(img, center, radius, (0, 255, 255), 2)
+
         cv.imshow('circle', circle_img)
+        cv.imshow('all circles', img)
 
     if easy_circles is True:
-        make_img = img.copy()
-
-        cut_img = mv.img_filter(make_img)
-        cv.imshow('cut1', cut_img)
-
-        # extract circles
-        circles = cv.HoughCircles(cut_img, cv.HOUGH_GRADIENT, 1, 30,
-                                  param1=50, param2=50, minRadius=0, maxRadius=0)
-        circles = np.uint16(np.around(circles))
-
-        # draw circles
-        circle_img = img.copy()
-        for c in circles[0, :]:
-            mask = np.zeros((img_width, img_height), dtype=np.uint8)
-            center = (c[0], c[1])
-            radius = c[2]
-
-            cv.circle(mask, center, radius, 255, -1)
-            std_img = cv.bitwise_and(cut_img, cut_img, mask=mask)
-            mask = np.where(mask == 255, 0, 1)
-            extract_img = np.ma.array(std_img, mask=mask)
-            std = np.std(extract_img)
-            if std < 30:
-                cv.circle(circle_img, center, radius, (0, 255, 255), 2)
-                print(std)
-            cv.circle(img, center, radius, (0, 255, 255), 2)
-        cv.imshow('circle', circle_img)
+        mv.easy_circle(img, img_width, img_height)
 
     if on_track_bar is True:
         # get track bar pos
@@ -174,9 +149,17 @@ while True:
         elif k == ord('3'):
             # rgb track bar use one
             one_t = low_a
-            if one_t >= 255 - 100:
-                one_t = 255 - 100
-            mv.rgb_track_bar(img, one_t, one_t + 100, one_t, one_t + 100, one_t, one_t + 100)
+            if one_t >= 255 - 10:
+                one_t = 255 - 10
+            mv.rgb_track_bar(img, one_t, one_t + 10, one_t, one_t + 10, one_t, one_t + 10)
+        elif k == ord('4'):
+            # gray track bar use one
+            gray_img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+            one_t = low_a
+            if one_t >= 255 - 10:
+                one_t = 255 - 10
+            cut_gray_img = mv.cut_value(gray_img, one_t, one_t + 10)
+            cv.imshow('cut_gray', cut_gray_img)
 
     cv.imshow('origin', img)
 
