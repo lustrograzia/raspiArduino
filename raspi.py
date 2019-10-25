@@ -68,7 +68,7 @@ while True:
 
         # extract circles
         circles = cv.HoughCircles(cut_img, cv.HOUGH_GRADIENT, 1, 30,
-                                  param1=50, param2=50, minRadius=0, maxRadius=0)
+                                  param1=70, param2=50, minRadius=0, maxRadius=0)
         if circles is None:
             print('Not detected circles')
             continue
@@ -76,21 +76,27 @@ while True:
 
         # draw circles
         circle_img = img.copy()
+        best_circle = [100, (0, 0), 0]
         for c in circles[0, :]:
-            mask = np.zeros((img_width, img_height), dtype=np.uint8)
+            mask = np.ones((img_width, img_height), dtype=np.uint8)
             center = (c[0], c[1])
             radius = c[2]
 
-            cv.circle(mask, center, radius, 255, -1)
-            std_img = cv.bitwise_and(cut_img, cut_img, mask=mask)
-            mask = np.where(mask == 255, 0, 1)
-            extract_img = np.ma.array(std_img, mask=mask)
+            cv.circle(mask, center, radius, 0, -1)
+            extract_img = np.ma.array(cut_img, mask=mask)
             std = np.std(extract_img)
-            if std < 30:
-                cv.circle(circle_img, center, radius, (0, 255, 255), 2)
-                print(std)
-            cv.circle(img, center, radius, (0, 255, 255), 2)
-        cv.imshow('circle', circle_img)
+
+            if std < best_circle[0]:
+                best_circle = [std, center, radius]
+            cv.circle(circle_img, center, radius, (0, 255, 255), 2)
+
+        if best_circle[0] is not 100:
+            cv.rectangle(img,
+                         tuple([i - best_circle[2] - 10 for i in best_circle[1]]),
+                         tuple([i + best_circle[2] + 10 for i in best_circle[1]]),
+                         (255, 0, 0), 2)
+
+        cv.imshow('all circles', circle_img)
 
     cv.imshow('origin', img)
 

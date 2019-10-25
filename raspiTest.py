@@ -91,8 +91,6 @@ while True:
 
         cv.imshow('circle', circle_img)
         cv.imshow('all circles', img)
-
     cv.imshow('origin', img)
 
 cv.destroyAllWindows()
-
