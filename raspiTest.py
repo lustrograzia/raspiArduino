@@ -6,6 +6,8 @@ import m_vision as mv
 ex_circles = False
 lx, ly, px, py = 0, 0, 0, 0
 on_mouse = 0
+ex_circle_img = None
+trackWindow = None
 
 
 def on_mouse_event(event, x, y, flag, param):
@@ -29,6 +31,8 @@ _, frame = cap.read()
 img_width = frame.shape[0]
 img_height = frame.shape[1]
 
+termination = (cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 1)
+
 while True:
     # read cam frame
     _, frame = cap.read()
@@ -47,7 +51,53 @@ while True:
         break
     elif k == ord('s'):
         # extract circles in img
-        ex_circles = not ex_circles
+        make_img = img.copy()
+        cut_img = mv.img_filter(make_img)
+
+        # extract circles
+        circles = cv.HoughCircles(cut_img, cv.HOUGH_GRADIENT, 1, 30,
+                                  param1=50, param2=50, minRadius=0, maxRadius=0)
+        if circles is None:
+            continue
+        circles = np.uint16(np.around(circles))
+
+        # draw circles
+        circle_img = img.copy()
+        best_circle = [100, (0, 0), 0]
+        for c in circles[0, :]:
+            mask = np.ones((img_width, img_height), dtype=np.uint8)
+            center = (c[0], c[1])
+            radius = c[2]
+
+            cv.circle(mask, center, radius, 0, -1)
+            extract_img = np.ma.array(cut_img, mask=mask)
+            std = np.std(extract_img)
+
+            if std < best_circle[0]:
+                best_circle = [std, center, radius]
+            cv.circle(circle_img, center, radius, (0, 255, 255), 2)
+
+        if best_circle[0] is not 100:
+            st_point = tuple([i - best_circle[2] - 10 for i in best_circle[1]])
+            ed_point = tuple([i + best_circle[2] + 10 for i in best_circle[1]])
+            trackWindow = (st_point[0], st_point[1], ed_point[0] - st_point[0], ed_point[1] - st_point[1])
+            ex_circle_img = img[st_point[1]:ed_point[1], st_point[0]:ed_point[0]]
+            cv.imshow('rect', ex_circle_img)
+
+            ex_circle_img = cv.cvtColor(ex_circle_img, cv.COLOR_BGR2HSV)
+            ex_circle_img = cv.calcHist([ex_circle_img], [0], None, [180], [0, 180])
+            cv.normalize(ex_circle_img, ex_circle_img, 0, 255, cv.NORM_MINMAX)
+
+        cv.imshow('all circles', circle_img)
+
+    elif k == ord('c'):
+        if ex_circle_img is not None:
+            hsv = cv.cvtColor(img, cv.COLOR_BGR2HSV)
+            dst = cv.calcBackProject([hsv], [0], ex_circle_img, [0, 180], 1)
+            ret, trackWindow = cv.meanShift(dst, trackWindow, termination)
+
+            x, y, w, h = trackWindow
+            cv.rectangle(img, (x, y), (x+w, y+h), (0, 0, 255), 2)
     elif k == ord('w'):
         # write img file
         cv.imwrite('circles_img.jpg', img)
@@ -62,35 +112,6 @@ while True:
         cv.destroyAllWindows()
 
     # loop
-    if ex_circles:
-        make_img = img.copy()
-        cut_img = mv.img_filter(make_img)
-
-        # extract circles
-        circles = cv.HoughCircles(cut_img, cv.HOUGH_GRADIENT, 1, 30,
-                                  param1=50, param2=50, minRadius=0, maxRadius=0)
-        if circles is None:
-            continue
-        circles = np.uint16(np.around(circles))
-
-        # draw circles
-        circle_img = img.copy()
-        best_circle = [100, 0, 0]
-        for c in circles[0, :]:
-            mask = np.ones((img_width, img_height), dtype=np.uint8)
-            center = (c[0], c[1])
-            radius = c[2]
-
-            cv.circle(mask, center, radius, 0, -1)
-            extract_img = np.ma.array(cut_img, mask=mask)
-            std = np.std(extract_img)
-
-            if std < best_circle[0]:
-                best_circle = [std, center, radius]
-            cv.circle(img, center, radius, (0, 255, 255), 2)
-
-        cv.imshow('circle', circle_img)
-        cv.imshow('all circles', img)
     cv.imshow('origin', img)
 
 cv.destroyAllWindows()

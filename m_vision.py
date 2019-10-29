@@ -110,5 +110,4 @@ def img_filter(img):
     yuv_img = cv.cvtColor(img, cv.COLOR_BGR2YUV)
     hist_img = cv.equalizeHist(yuv_img[:, :, 0])
     blur_img = cv.bilateralFilter(hist_img, 9, 75, 75)
-    #cut_img = cut_value(hist_img, 50, 255)
     return blur_img

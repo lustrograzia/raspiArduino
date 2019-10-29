@@ -10,6 +10,7 @@ lx, ly, px, py = 0, 0, 0, 0
 on_mouse = 0
 on_track_bar = False
 img_count = 0
+ex_circle_img = 0
 
 
 def nothing(x):
@@ -59,6 +60,9 @@ while True:
         else:
             on_track_bar = False
             cv.destroyWindow('origin')
+    elif k == ord('q'):
+        make_img = img.copy()
+        cut_img = mv.img_filter(make_img)
     elif k == ord('s'):
         # extract circles in img
         ex_circles = not ex_circles
@@ -92,7 +96,7 @@ while True:
 
         # draw circles
         circle_img = img.copy()
-        best_circle = [100, (0, 0), 0]
+        ex_circle_pos = [100, (0, 0), 0]
         for c in circles[0, :]:
             mask = np.ones((img_width, img_height), dtype=np.uint8)
             center = (c[0], c[1])
@@ -102,17 +106,18 @@ while True:
             extract_img = np.ma.array(cut_img, mask=mask)
             std = np.std(extract_img)
 
-            if std < best_circle[0]:
-                best_circle = [std, center, radius]
+            if std < ex_circle_pos[0]:
+                ex_circle_pos = [std, center, radius]
             cv.circle(circle_img, center, radius, (0, 255, 255), 2)
 
-        if best_circle[0] is not 100:
-            cv.rectangle(img,
-                         tuple([i - best_circle[2] - 10 for i in best_circle[1]]),
-                         tuple([i + best_circle[2] + 10 for i in best_circle[1]]),
-                         (255, 0, 0), 2)
+        if ex_circle_pos[0] is not 100:
+            st_point = tuple([i - ex_circle_pos[2] - 10 for i in ex_circle_pos[1]])
+            ed_point = tuple([i + ex_circle_pos[2] + 10 for i in ex_circle_pos[1]])
+            ex_circle_img = img[st_point[1]:ed_point[1], st_point[0]:ed_point[0]]
+            cv.imshow('rect', ex_circle_img)
 
         cv.imshow('all circles', circle_img)
+        ex_circles = False
 
     if on_track_bar is True:
         # get track bar pos
