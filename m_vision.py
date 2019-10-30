@@ -111,3 +111,16 @@ def img_filter(img):
     hist_img = cv.equalizeHist(yuv_img[:, :, 0])
     blur_img = cv.bilateralFilter(hist_img, 9, 75, 75)
     return blur_img
+
+
+def draw_hist(img):
+    hist_img = np.zeros((480, 270), dtype=np.uint8)
+    hist_item = cv.calcHist(img, [0], None, [255], [0, 255])
+    cv.normalize(hist_item, hist_item, 0, 255, cv.NORM_MINMAX)
+    hist = np.int32(np.around(hist_item))
+    for x, y in enumerate(hist):
+        cv.line(hist_img, (x + 0, 0 + 10), (x + 0, y + 10), (255, 255, 255))
+    cv.line(hist_img, (0, 0 + 10), (0, 5), (255, 255, 255))
+    cv.line(hist_img, (5 + 180, 0 + 10), (5 + 180, 5), (255, 255, 255))
+    hist_img = np.flipud(hist_img)
+    return hist_img

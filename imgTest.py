@@ -10,7 +10,8 @@ lx, ly, px, py = 0, 0, 0, 0
 on_mouse = 0
 on_track_bar = False
 img_count = 0
-ex_circle_img = 0
+ex_circle_img = None
+trackWindow = None
 
 
 def nothing(x):
@@ -36,6 +37,8 @@ images = [cv.imread(file) for file in glob.glob('D:/doc/pic/test/*.jpg')]
 o_img = images[0]
 img_width = o_img.shape[0]
 img_height = o_img.shape[1]
+
+termination = (cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 1)
 
 while True:
     # read cam frame
@@ -65,24 +68,6 @@ while True:
         cut_img = mv.img_filter(make_img)
     elif k == ord('s'):
         # extract circles in img
-        ex_circles = not ex_circles
-    elif k == ord('n'):
-        img_count += 1
-        if img_count == len(images):
-            img_count = 0
-        o_img = images[img_count]
-    elif k == ord('i'):
-        # initial working variable
-        # initial draw rectangle
-        on_mouse = 0
-        # initial draw circles
-        ex_circles = False
-        # initial track bar
-        on_track_bar = False
-        cv.destroyAllWindows()
-
-    # loop
-    if ex_circles:
         make_img = img.copy()
         cut_img = mv.img_filter(make_img)
 
@@ -113,11 +98,54 @@ while True:
         if ex_circle_pos[0] is not 100:
             st_point = tuple([i - ex_circle_pos[2] - 10 for i in ex_circle_pos[1]])
             ed_point = tuple([i + ex_circle_pos[2] + 10 for i in ex_circle_pos[1]])
+            trackWindow = (st_point[0], st_point[1],
+                           ed_point[0] - st_point[0],
+                           ed_point[1] - st_point[1])
             ex_circle_img = img[st_point[1]:ed_point[1], st_point[0]:ed_point[0]]
             cv.imshow('rect', ex_circle_img)
 
+            ex_circle_img = cv.cvtColor(ex_circle_img, cv.COLOR_BGR2HSV)
+            ex_circle_img = cv.calcHist([ex_circle_img], [0], None, [180], [0, 180])
+            cv.imshow('calcHist', ex_circle_img)
+            cv.normalize(ex_circle_img, ex_circle_img, 0, 255, cv.NORM_MINMAX)
+
+            rect_mask = np.ones((img_width, img_height), dtype=np.uint8)
+            cv.circle(rect_mask, ex_circle_pos[1], ex_circle_pos[2], 0, -1)
+            rect_circle = np.ma.array(cut_img, mask=rect_mask)
+            print(np.mean(rect_circle))
+            rect_circle_hist = mv.draw_hist(rect_circle)
+            print(np.mean(cut_img))
+            cut_img_hist = mv.draw_hist(cut_img)
+            cv.imshow('rect_circle_hist', rect_circle_hist)
+            cv.imshow('cut_img_hist', cut_img_hist)
+
+
         cv.imshow('all circles', circle_img)
+    elif k == ord('c'):
+        # trace rect
+        if ex_circle_img is not None:
+            hsv = cv.cvtColor(img, cv.COLOR_BGR2HSV)
+            dst = cv.calcBackProject([hsv], [0], ex_circle_img, [0, 180], 100)
+            cv.imshow('dst', dst)
+            ret, trackWindow = cv.meanShift(dst, trackWindow, termination)
+            x, y, w, h = trackWindow
+            cv.rectangle(img, (x, y), (x+w, y+h), (0, 0, 255), 2)
+    elif k == ord('n'):
+        img_count += 1
+        if img_count == len(images):
+            img_count = 0
+        o_img = images[img_count]
+    elif k == ord('i'):
+        # initial working variable
+        # initial draw rectangle
+        on_mouse = 0
+        # initial draw circles
         ex_circles = False
+        # initial track bar
+        on_track_bar = False
+        cv.destroyAllWindows()
+
+    # loop
 
     if on_track_bar is True:
         # get track bar pos
