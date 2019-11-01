@@ -82,7 +82,7 @@ def rgb_track_bar(img, low_r=0, high_r=255, low_g=0, high_g=255, low_b=0, high_b
     cv.imshow('bgr', bgr)
 
 
-def hsv_track_bar(img, low_h=0, high_h=180, low_s=0, high_s=180, low_v=0, high_v=180):
+def hsv_track_bar(img, low_h=0, high_h=180, low_s=0, high_s=255, low_v=0, high_v=255):
     if low_h > 180:
         low_h = 180
     if high_h > 180:
@@ -106,6 +106,26 @@ def hsv_track_bar(img, low_h=0, high_h=180, low_s=0, high_s=180, low_v=0, high_v
     cv.imshow('hsv', hsv)
 
 
+def yuv_track_bar(img, low_y=0, high_y=255, low_u=0, high_u=255, low_v=0, high_v=255):
+    yuv_img = cv.cvtColor(img, cv.COLOR_BGR2YUV)
+    y, u, v = cv.split(yuv_img)
+
+    low_y, high_y = overlap_block(low_y, high_y)
+    low_u, high_u = overlap_block(low_u, high_u)
+    low_v, high_v = overlap_block(low_v, high_v)
+    y = cut_value(y, low_y, high_y)
+    u = cut_value(u, low_u, high_u)
+    v = cut_value(v, low_v, high_v)
+
+    cv.imshow('y', y)
+    cv.imshow('u', u)
+    cv.imshow('v', v)
+
+    yuv = cv.merge([y, u, v])
+    yuv = cv.cvtColor(yuv, cv.COLOR_YUV2BGR)
+    cv.imshow('yuv', yuv)
+
+
 def img_filter(img):
     yuv_img = cv.cvtColor(img, cv.COLOR_BGR2YUV)
     hist_img = cv.equalizeHist(yuv_img[:, :, 0])
@@ -115,7 +135,7 @@ def img_filter(img):
 
 def draw_hist(img):
     hist_img = np.zeros((480, 270), dtype=np.uint8)
-    hist_item = cv.calcHist(img, [0], None, [255], [0, 255])
+    hist_item = cv.calcHist([img], [0], None, [256], [0, 255])
     cv.normalize(hist_item, hist_item, 0, 255, cv.NORM_MINMAX)
     hist = np.int32(np.around(hist_item))
     for x, y in enumerate(hist):

@@ -85,7 +85,7 @@ while True:
             cv.imshow('rect', ex_circle_img)
 
             ex_circle_img = cv.cvtColor(ex_circle_img, cv.COLOR_BGR2HSV)
-            ex_circle_img = cv.calcHist([ex_circle_img], [0], None, [180], [0, 180])
+            ex_circle_img = cv.calcHist([ex_circle_img], [2], None, [256], [0, 255])
             cv.normalize(ex_circle_img, ex_circle_img, 0, 255, cv.NORM_MINMAX)
 
         cv.imshow('all circles', circle_img)
@@ -93,9 +93,8 @@ while True:
     elif k == ord('c'):
         if ex_circle_img is not None:
             hsv = cv.cvtColor(img, cv.COLOR_BGR2HSV)
-            dst = cv.calcBackProject([hsv], [0], ex_circle_img, [0, 180], 1)
+            dst = cv.calcBackProject([hsv], [0], ex_circle_img, [0, 180], 100)
             ret, trackWindow = cv.meanShift(dst, trackWindow, termination)
-
             x, y, w, h = trackWindow
             cv.rectangle(img, (x, y), (x+w, y+h), (0, 0, 255), 2)
     elif k == ord('w'):

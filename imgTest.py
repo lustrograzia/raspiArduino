@@ -105,20 +105,8 @@ while True:
             cv.imshow('rect', ex_circle_img)
 
             ex_circle_img = cv.cvtColor(ex_circle_img, cv.COLOR_BGR2HSV)
-            ex_circle_img = cv.calcHist([ex_circle_img], [0], None, [180], [0, 180])
-            cv.imshow('calcHist', ex_circle_img)
+            ex_circle_img = cv.calcHist([ex_circle_img], [2], None, [256], [0, 255])
             cv.normalize(ex_circle_img, ex_circle_img, 0, 255, cv.NORM_MINMAX)
-
-            rect_mask = np.ones((img_width, img_height), dtype=np.uint8)
-            cv.circle(rect_mask, ex_circle_pos[1], ex_circle_pos[2], 0, -1)
-            rect_circle = np.ma.array(cut_img, mask=rect_mask)
-            print(np.mean(rect_circle))
-            rect_circle_hist = mv.draw_hist(rect_circle)
-            print(np.mean(cut_img))
-            cut_img_hist = mv.draw_hist(cut_img)
-            cv.imshow('rect_circle_hist', rect_circle_hist)
-            cv.imshow('cut_img_hist', cut_img_hist)
-
 
         cv.imshow('all circles', circle_img)
     elif k == ord('c'):
@@ -158,11 +146,8 @@ while True:
             # hsv track bar
             mv.hsv_track_bar(img, low_a, high_a, low_b, high_b, low_c, high_c)
         elif k == ord('3'):
-            # rgb track bar use one
-            one_t = low_a
-            if one_t >= 255 - 10:
-                one_t = 255 - 10
-            mv.rgb_track_bar(img, one_t, one_t + 10, one_t, one_t + 10, one_t, one_t + 10)
+            # yuv track bar
+            mv.yuv_track_bar(img, low_a, high_a, low_b, high_b, low_c, high_c)
         elif k == ord('4'):
             # gray track bar use one
             gray_img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
