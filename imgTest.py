@@ -5,6 +5,8 @@ import m_vision as mv
 import glob
 import serial
 
+ser = serial.Serial('/dev/ttyUSB0', 9600)
+
 ex_circles = False
 lx, ly, px, py = 0, 0, 0, 0
 on_mouse = 0
@@ -81,7 +83,7 @@ while True:
 
         # draw circles
         circle_img = img.copy()
-        ex_circle_pos = [100, (0, 0), 0]
+        ex_circle_pos = [1, (0, 0), 0]
         for c in circles[0, :]:
             mask = np.ones((img_width, img_height), dtype=np.uint8)
             center = (c[0], c[1])
@@ -95,25 +97,51 @@ while True:
                 ex_circle_pos = [std, center, radius]
             cv.circle(circle_img, center, radius, (0, 255, 255), 2)
 
-        if ex_circle_pos[0] is not 100:
-            st_point = tuple([i - ex_circle_pos[2] - 10 for i in ex_circle_pos[1]])
-            ed_point = tuple([i + ex_circle_pos[2] + 10 for i in ex_circle_pos[1]])
+        if ex_circle_pos[0] is not 1:
+            st_point = tuple([i - ex_circle_pos[2] for i in ex_circle_pos[1]])
+            ed_point = tuple([i + ex_circle_pos[2] for i in ex_circle_pos[1]])
             trackWindow = (st_point[0], st_point[1],
                            ed_point[0] - st_point[0],
                            ed_point[1] - st_point[1])
             ex_circle_img = img[st_point[1]:ed_point[1], st_point[0]:ed_point[0]]
             cv.imshow('rect', ex_circle_img)
 
-            ex_circle_img = cv.cvtColor(ex_circle_img, cv.COLOR_BGR2HSV)
-            ex_circle_img = cv.calcHist([ex_circle_img], [2], None, [256], [0, 255])
-            cv.normalize(ex_circle_img, ex_circle_img, 0, 255, cv.NORM_MINMAX)
+            w = ex_circle_pos[1][0]
+            if w > 200:
+                ser.write(b'L')
+            elif w < 280:
+                ser.write(b'R')
+
+            # ex_circle_img = cv.cvtColor(ex_circle_img, cv.COLOR_BGR2HSV)
+            # ex_circle_img = cv.calcHist([ex_circle_img], [0, 1], None, [180, 256], [0, 180, 0, 256])
+            # cv.normalize(ex_circle_img, ex_circle_img, 0, 255, cv.NORM_MINMAX)
+
+            """
+            # extract circle img
+            circle_mask = np.zeros((img_width, img_height), dtype=np.uint8)
+            circle_mask = cv.circle(circle_mask, ex_circle_pos[1], ex_circle_pos[2]-5, 255, -1)
+            ex_circle_img = cv.bitwise_and(img, img, mask=circle_mask)
+            cv.imshow('ex_circle_img', ex_circle_img)
+            # extract circle img hsv value
+            ex_cut_img = np.zeros((img_width, img_height, 3), dtype=np.uint8)
+            hsv_circle_img = cv.cvtColor(ex_circle_img, cv.COLOR_BGR2HSV)
+            hsv_img = cv.cvtColor(img, cv.COLOR_BGR2HSV)
+            a, b = mv.min_max_value(hsv_circle_img[:, :, 0])
+            ex_cut_img[:, :, 0] = mv.cut_value(hsv_img[:, :, 0], a, b)
+            a, b = mv.min_max_value(hsv_circle_img[:, :, 1])
+            ex_cut_img[:, :, 1] = mv.cut_value(hsv_img[:, :, 1], a, b)
+            a, b = mv.min_max_value(hsv_circle_img[:, :, 2])
+            ex_cut_img[:, :, 2] = mv.cut_value(hsv_img[:, :, 2], a, b)
+            ex_cut_img = cv.cvtColor(ex_cut_img, cv.COLOR_HSV2BGR)
+            cv.imshow('ex_cut_img', ex_cut_img)
+            """
 
         cv.imshow('all circles', circle_img)
     elif k == ord('c'):
         # trace rect
         if ex_circle_img is not None:
             hsv = cv.cvtColor(img, cv.COLOR_BGR2HSV)
-            dst = cv.calcBackProject([hsv], [0], ex_circle_img, [0, 180], 100)
+            dst = cv.calcBackProject([hsv], [0, 1], ex_circle_img, [0, 180, 0, 255], 1)
             cv.imshow('dst', dst)
             ret, trackWindow = cv.meanShift(dst, trackWindow, termination)
             x, y, w, h = trackWindow

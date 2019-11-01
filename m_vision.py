@@ -36,6 +36,20 @@ def hsv_cut_v(img, low_v=0, high_v=255):
     return v_img
 
 
+def min_max_value(img):
+    width, height = img.shape[0], img.shape[1]
+    min_value, max_value = 255, 0
+    for i in range(width):
+        for j in range(height):
+            n = int(img[i, j])
+            if n is not 0:
+                if n < min_value:
+                    min_value = n
+                if n > max_value:
+                    max_value = n
+    return min_value, max_value
+
+
 def create_track_bar(window):
     def nothing(x):
         pass
