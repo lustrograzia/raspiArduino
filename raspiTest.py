@@ -5,7 +5,6 @@ import m_vision as mv
 
 ex_circles = False
 ex_circle_img = None
-trackWindow = None
 
 
 cap = cv.VideoCapture(-1)
@@ -30,8 +29,9 @@ while True:
 
         # extract circles
         circles = cv.HoughCircles(cut_img, cv.HOUGH_GRADIENT, 1, 30,
-                                  param1=50, param2=50, minRadius=0, maxRadius=0)
+                                  param1=70, param2=50, minRadius=0, maxRadius=0)
         if circles is None:
+            print('Not detected circles')
             continue
         circles = np.uint16(np.around(circles))
 
@@ -55,18 +55,20 @@ while True:
         if best_circle[0] is not 100:
             cv.circle(img, best_circle[1], 2, (255, 0, 0), 2)
 
+        w_pos = best_circle[1][0]
+        h_pos = best_circle[1][1]
+        print(w_pos, h_pos)
+
+        theta_a = w_pos - img_width / 2
+
         cv.imshow('all circles', circle_img)
     elif k == ord('w'):
         # write img file
         cv.imwrite('circles_img.jpg', img)
     elif k == ord('i'):
         # initial working variable
-        # initial draw rectangle
-        on_mouse = 0
         # initial draw circles
         ex_circles = False
-        # initial track bar
-        on_track_bar = False
         cv.destroyAllWindows()
 
     # loop

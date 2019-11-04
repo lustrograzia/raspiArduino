@@ -3,9 +3,6 @@ import cv2 as cv
 import numpy as np
 import m_vision as mv
 import glob
-import serial
-
-ser = serial.Serial('/dev/ttyUSB0', 9600)
 
 ex_circles = False
 lx, ly, px, py = 0, 0, 0, 0
@@ -105,12 +102,6 @@ while True:
                            ed_point[1] - st_point[1])
             ex_circle_img = img[st_point[1]:ed_point[1], st_point[0]:ed_point[0]]
             cv.imshow('rect', ex_circle_img)
-
-            w = ex_circle_pos[1][0]
-            if w > 200:
-                ser.write(b'L')
-            elif w < 280:
-                ser.write(b'R')
 
             # ex_circle_img = cv.cvtColor(ex_circle_img, cv.COLOR_BGR2HSV)
             # ex_circle_img = cv.calcHist([ex_circle_img], [0, 1], None, [180, 256], [0, 180, 0, 256])
