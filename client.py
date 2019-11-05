@@ -47,22 +47,27 @@ sequence = 0
 
 while True:
     if sequence is 0:
-        sequence = input('insert number'
-                         '\n1 send ready message'
-                         '\n2 prepared receive data'
-                         '\n3 transfer img'
-                         '\n9 stop')
+        sequence = input('insert number\n'
+                         '1 send ready message\n'
+                         '2 prepared receive data\n'
+                         '3 transfer img\n'
+                         '9 stop\n')
     elif sequence is 1:
+        print('sequence 1')
         message = 'ready'
         client_socket.send(message.encode())
-        sequence = 2
+        sequence = 3
     elif sequence is 2:
+        print('sequence 2')
         server_data = client_socket.recv(1024)
         server_message = server_data.decode()
         if server_message == 'transfer img':
             sequence = 3
     elif sequence is 3:
+        print('sequence 3')
         send_img(client_socket)
+        sequence = 2
     elif sequence is 9:
+        print('sequence 9')
         break
 client_socket.close()

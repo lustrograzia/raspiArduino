@@ -86,18 +86,19 @@ while True:
         client_message = client_data.decode()
         print(client_message)
         if client_message == 'ready':
-            message = 'transfer img'
-            client_socket.send(message.encode())
-        elif client_message == 'cv_img':
             first_img = decode_img(client_socket)
-            sequence = 2
+            cv.imshow('first_img', first_img)
+            sequence = 4
     elif sequence is 2:
         print('sequence : 2')
         if first_img is not None:
             circle_pos = mv.extract_circle(first_img)
             if circle_pos is -1:
+
                 first_img = None
                 sequence = 1
+            else:
+                sequence = 4
         else:
             # first_img is None
             sequence = 3
