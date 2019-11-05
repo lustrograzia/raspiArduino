@@ -14,14 +14,33 @@ def recvall(sock, count):
     return buf
 
 
+def web_cam(queue):
+
+    capture = cv.VideoCapture(-1)
+    ret, frame = capture.read()
+
+    encode_param = [int(cv.IMWRITE_JPEG_QUALITY), 90]
+    result, img_encode = cv.imencode('.jpg', frame, encode_param)
+
+    img_data = np.array(img_encode)
+    string_data = img_data.tostring()
+
+    queue.put(string_data)
+
+    cv.imshow('image', frame)
+
+
 IP = '10.10.23.10'
 PORT = 8000
 
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client_socket.connect((IP, PORT))
 
-while True:
+message = '1'
+client_socket.send(message.encode())
 
+"""
+while True:
     message = '1'
     client_socket.send(message.encode())
 
@@ -35,5 +54,6 @@ while True:
     key = cv.waitKey(1)
     if key == 27:
         break
+"""
 
 client_socket.close()
