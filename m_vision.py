@@ -158,3 +158,45 @@ def draw_hist(img):
     cv.line(hist_img, (5 + 180, 0 + 10), (5 + 180, 5), (255, 255, 255))
     hist_img = np.flipud(hist_img)
     return hist_img
+
+
+def extract_circle(img):
+    # apply filter
+    make_img = img.copy()
+    filtered_img = img_filter(make_img)
+
+    img_width = img.shape[0]
+    img_height = img.shape[1]
+
+    # extract circles
+    circles = cv.HoughCircles(filtered_img, cv.HOUGH_GRADIENT, 1, 30,
+                              param1=70, param2=50, minRadius=0, maxRadius=0)
+    if circles is None:
+        print('Not detected circles')
+        return -1
+    circles = np.uint32(np.around(circles))
+
+    # extract best circle
+    circle_img = img.copy()
+    best_circle = [1, (0, 0), 0]
+    for c in circles[0, :]:
+        mask = np.ones((img_width, img_height), dtype=np.uint8)
+        center = (c[0], c[1])
+        radius = c[2]
+        # extract circle img
+        cv.circle(mask, center, radius, 0, -1)
+        extract_img = np.ma.array(filtered_img, mask=mask)
+        # calculate circle standard deviation
+        std = np.std(extract_img)
+        # find white circle
+        if std < best_circle[0]:
+            best_circle = [std, center, radius]
+        cv.circle(circle_img, center, radius, (0, 255, 255), 2)
+
+    if best_circle[0] is not 1:
+        cv.circle(make_img, best_circle[1], 2, (255, 0, 0), 2)
+
+    cv.imshow('circle_img', circle_img)
+    cv.imshow('make_img', make_img)
+
+    return best_circle[1]

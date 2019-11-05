@@ -2,16 +2,7 @@
 import socket
 import numpy as np
 import cv2 as cv
-
-
-def recvall(sock, count):
-    buf = b''
-    while count:
-        newbuf = sock.recv(count)
-        if not newbuf: return None
-        buf += newbuf
-        count -= len(newbuf)
-    return buf
+import serial
 
 
 def web_cam(queue):
@@ -30,30 +21,48 @@ def web_cam(queue):
     cv.imshow('image', frame)
 
 
+def send_img(socket_name):
+    capture = cv.VideoCapture(-1)
+    ret, frame = capture.read()
+
+    pre_message = 'cv_img'
+    socket_name.send(pre_message.encode())
+
+    encode_param = [int(cv.IMWRITE_JPEG_QUALITY), 90]
+    result, img_encode = cv.imencode('.jpg', frame, encode_param)
+    img_data = np.array(img_encode)
+    string_data = img_data.tostring()
+
+    socket_name.send(str(len(string_data)).ljust(16))
+    socket_name.send(string_data)
+
+
 IP = '10.10.23.10'
 PORT = 8000
 
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client_socket.connect((IP, PORT))
 
-message = '1'
-client_socket.send(message.encode())
+sequence = 0
 
-"""
 while True:
-    message = '1'
-    client_socket.send(message.encode())
-
-    length = recvall(client_socket, 16)
-    stringData = recvall(client_socket, int(length))
-    data = np.frombuffer(stringData, dtype=np.uint8)
-
-    decimg = cv.imdecode(data, 1)
-    cv.imshow('image', decimg)
-
-    key = cv.waitKey(1)
-    if key == 27:
+    if sequence is 0:
+        sequence = input('insert number'
+                         '\n1 send ready message'
+                         '\n2 prepared receive data'
+                         '\n3 transfer img'
+                         '\n9 stop')
+    elif sequence is 1:
+        message = 'ready'
+        client_socket.send(message.encode())
+        sequence = 2
+    elif sequence is 2:
+        server_data = client_socket.recv(1024)
+        server_message = server_data.decode()
+        if server_message == 'transfer img':
+            sequence = 3
+    elif sequence is 3:
+        send_img(client_socket)
+    elif sequence is 9:
         break
-"""
-
 client_socket.close()
