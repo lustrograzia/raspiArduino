@@ -198,5 +198,6 @@ def extract_circle(img):
 
     cv.imshow('circle_img', circle_img)
     cv.imshow('make_img', make_img)
+    cv.waitKey(0)
 
     return best_circle[1]

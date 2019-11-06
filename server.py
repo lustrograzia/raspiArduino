@@ -85,28 +85,31 @@ while True:
         client_data = client_socket.recv(1024)
         client_message = client_data.decode()
         print(client_message)
-        if client_message == 'ready':
+        if client_message == 'cv_img':
             first_img = decode_img(client_socket)
-            cv.imshow('first_img', first_img)
-            sequence = 4
+            sequence = 2
     elif sequence is 2:
         print('sequence : 2')
         if first_img is not None:
             circle_pos = mv.extract_circle(first_img)
             if circle_pos is -1:
-
                 first_img = None
-                sequence = 1
-            else:
                 sequence = 4
+            else:
+                sequence = 9
         else:
             # first_img is None
-            sequence = 3
+            sequence = 4
     elif sequence is 3:
-        print('sequence : 3')
-        # send message transfer img
-        message = 'transfer img'
+        message = 'resend'
         client_socket.send(message.encode())
         sequence = 1
+    elif sequence is 4:
+        message = 'check object position'
+        client_socket.send(message.encode())
+        sequence = 1
+    elif sequence is 9:
+        break
 
+cv.destroyAllWindows()
 server_socket.close()
