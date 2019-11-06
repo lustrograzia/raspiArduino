@@ -5,6 +5,7 @@ import numpy as np
 from multiprocessing import Queue
 from _thread import *
 import m_vision as mv
+from datetime import datetime
 
 enclosure_queue = Queue()
 first_img = None
@@ -47,6 +48,9 @@ def decode_img(socket_name):
     string_data = receive_img(socket_name, int(length))
     img_data = np.fromstring(string_data, dtype=np.uint8)
     decode_img_data = cv.imdecode(img_data, 1)
+    now = datetime.now()
+    name = now.strftime('%Y%m%d_%H%M%S')
+    cv.imwrite('d:/doc/pic/test/' + name + '.jpg', decode_img_data)
     return decode_img_data
 
 
@@ -77,8 +81,8 @@ while True:
         print('Connected by', address[0], ':', address[1])
         sequence = 1
     elif sequence is 1:
-        print('sequence : 1')
         # receive client data
+        print('sequence : 1')
         if client_socket is None:
             sequence = 0
             continue
@@ -89,6 +93,7 @@ while True:
             first_img = decode_img(client_socket)
             sequence = 2
     elif sequence is 2:
+        # extract circles
         print('sequence : 2')
         if first_img is not None:
             circle_pos = mv.extract_circle(first_img)
@@ -105,10 +110,13 @@ while True:
         client_socket.send(message.encode())
         sequence = 1
     elif sequence is 4:
+        # not detected circles in received image
+        print('sequence : 4')
         message = 'check object position'
         client_socket.send(message.encode())
         sequence = 1
     elif sequence is 9:
+        print('sequence : 9')
         break
 
 cv.destroyAllWindows()

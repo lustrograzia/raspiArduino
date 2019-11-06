@@ -50,6 +50,21 @@ def min_max_value(img):
     return min_value, max_value
 
 
+def create_color_table():
+    table = [[[i, 255, 255] for i in range(180)]]
+    img = table*50
+    img = np.uint8(np.array(img))
+    img = cv.cvtColor(img, cv.COLOR_HSV2BGR)
+    return img
+
+
+def simplify_color(img, simplify_size=10):
+    hsv_img = cv.cvtColor(img, cv.COLOR_BGR2HSV)
+    hsv_img = np.where(hsv_img > 0, hsv_img - hsv_img % simplify_size, hsv_img)
+    change_img = cv.cvtColor(hsv_img, cv.COLOR_HSV2BGR)
+    return change_img
+
+
 def create_track_bar(window):
     def nothing(x):
         pass
@@ -140,11 +155,15 @@ def yuv_track_bar(img, low_y=0, high_y=255, low_u=0, high_u=255, low_v=0, high_v
     cv.imshow('yuv', yuv)
 
 
-def img_filter(img):
-    yuv_img = cv.cvtColor(img, cv.COLOR_BGR2YUV)
-    hist_img = cv.equalizeHist(yuv_img[:, :, 0])
+def img_filter(img, show=False):
+    gray_img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+    hist_img = cv.equalizeHist(gray_img)
     blur_img = cv.bilateralFilter(hist_img, 9, 75, 75)
-    return blur_img
+    if show:
+        cv.imshow('phase 1', gray_img)
+        cv.imshow('phase 2', hist_img)
+        cv.imshow('phase 3', blur_img)
+    return gray_img
 
 
 def draw_hist(img):

@@ -65,14 +65,51 @@ while True:
     elif k == ord('q'):
         make_img = img.copy()
         cut_img = mv.img_filter(make_img)
+    elif k == ord('p'):
+        # extract circles in img
+        make_img = img.copy()
+        simplify_img = mv.simplify_color(make_img)
+        cut_img = cv.cvtColor(simplify_img, cv.COLOR_BGR2GRAY)
+
+        # extract circles
+        circles = cv.HoughCircles(cut_img, cv.HOUGH_GRADIENT, 1, 20,
+                                  param1=60, param2=50, minRadius=20, maxRadius=200)
+        if circles is None:
+            print('Not detected circles')
+            continue
+        circles = np.uint16(np.around(circles))
+        """
+        # draw circles
+        circle_img = img.copy()
+        for c in circles[0, :]:
+            mask = np.ones((img_width, img_height), dtype=np.uint8)
+            center = (c[0], c[1])
+            radius = c[2]
+
+            cv.circle(mask, center, radius, 0, -1)
+            extract_img = np.ma.array(cut_img, mask=mask)
+            std = np.std(extract_img)
+
+            if std < ex_circle_pos[0]:
+                ex_circle_pos = [std, center, radius]
+            cv.circle(circle_img, center, radius, (0, 255, 255), 2)
+        """
+        print(circles[0, 1])
+        print(len(circles[0]))
+
+    elif k == ord('o'):
+        a = np.zeros((480, 640), dtype=np.uint8)
+        cv.circle(a, (320, 240), 20, 255, -1)
+        cv.imshow('circle', a)
     elif k == ord('s'):
         # extract circles in img
         make_img = img.copy()
-        cut_img = mv.img_filter(make_img)
+        simplify_img = mv.simplify_color(make_img)
+        cut_img = mv.img_filter(simplify_img, show=True)
 
         # extract circles
-        circles = cv.HoughCircles(cut_img, cv.HOUGH_GRADIENT, 1, 30,
-                                  param1=70, param2=50, minRadius=0, maxRadius=0)
+        circles = cv.HoughCircles(cut_img, cv.HOUGH_GRADIENT, 1, 20,
+                                  param1=70, param2=50, minRadius=20, maxRadius=200)
         if circles is None:
             print('Not detected circles')
             continue
@@ -95,38 +132,19 @@ while True:
             cv.circle(circle_img, center, radius, (0, 255, 255), 2)
 
         if ex_circle_pos[0] is not 1:
-            st_point = tuple([i - ex_circle_pos[2] for i in ex_circle_pos[1]])
+            st_point = [i - ex_circle_pos[2] for i in ex_circle_pos[1]]
             ed_point = tuple([i + ex_circle_pos[2] for i in ex_circle_pos[1]])
+            if st_point[0] > 1000:
+                st_point[0] = 0
+            if st_point[1] > 1000:
+                st_point[1] = 0
+            st_point = tuple(st_point)
             trackWindow = (st_point[0], st_point[1],
                            ed_point[0] - st_point[0],
                            ed_point[1] - st_point[1])
             ex_circle_img = img[st_point[1]:ed_point[1], st_point[0]:ed_point[0]]
+            print(trackWindow)
             cv.imshow('rect', ex_circle_img)
-
-            # ex_circle_img = cv.cvtColor(ex_circle_img, cv.COLOR_BGR2HSV)
-            # ex_circle_img = cv.calcHist([ex_circle_img], [0, 1], None, [180, 256], [0, 180, 0, 256])
-            # cv.normalize(ex_circle_img, ex_circle_img, 0, 255, cv.NORM_MINMAX)
-
-            """
-            # extract circle img
-            circle_mask = np.zeros((img_width, img_height), dtype=np.uint8)
-            circle_mask = cv.circle(circle_mask, ex_circle_pos[1], ex_circle_pos[2]-5, 255, -1)
-            ex_circle_img = cv.bitwise_and(img, img, mask=circle_mask)
-            cv.imshow('ex_circle_img', ex_circle_img)
-            # extract circle img hsv value
-            ex_cut_img = np.zeros((img_width, img_height, 3), dtype=np.uint8)
-            hsv_circle_img = cv.cvtColor(ex_circle_img, cv.COLOR_BGR2HSV)
-            hsv_img = cv.cvtColor(img, cv.COLOR_BGR2HSV)
-            a, b = mv.min_max_value(hsv_circle_img[:, :, 0])
-            ex_cut_img[:, :, 0] = mv.cut_value(hsv_img[:, :, 0], a, b)
-            a, b = mv.min_max_value(hsv_circle_img[:, :, 1])
-            ex_cut_img[:, :, 1] = mv.cut_value(hsv_img[:, :, 1], a, b)
-            a, b = mv.min_max_value(hsv_circle_img[:, :, 2])
-            ex_cut_img[:, :, 2] = mv.cut_value(hsv_img[:, :, 2], a, b)
-            ex_cut_img = cv.cvtColor(ex_cut_img, cv.COLOR_HSV2BGR)
-            cv.imshow('ex_cut_img', ex_cut_img)
-            """
-
         cv.imshow('all circles', circle_img)
     elif k == ord('c'):
         # trace rect
@@ -153,7 +171,6 @@ while True:
         cv.destroyAllWindows()
 
     # loop
-
     if on_track_bar is True:
         # get track bar pos
         low_a, high_a, low_b, high_b, low_c, high_c = mv.get_track_bar_pos('origin')
@@ -175,7 +192,56 @@ while True:
                 one_t = 255 - 10
             cut_gray_img = mv.cut_value(gray_img, one_t, one_t + 10)
             cv.imshow('cut_gray', cut_gray_img)
+        elif k == ord('5'):
+            # h value(hsv) divide 10 size
+            low_a, high_a = mv.overlap_block(low_a, high_a)
+            low_value = low_a - low_a % 10
+            high_value = high_a - high_a % 10
+            color_table = mv.create_color_table()
+            hsv_color_table = cv.cvtColor(color_table, cv.COLOR_BGR2HSV)
+            h, s, v = cv.split(hsv_color_table)
+            h = np.where(h > 0, h - h % 10, h)
+            color_table_mask = np.where(h <= high_value, h, -1)
+            color_table_mask = np.uint8(np.where(color_table_mask >= low_value, 255, 0))
+            color_table = cv.merge((h, s, v))
+            color_table = cv.cvtColor(color_table, cv.COLOR_HSV2BGR)
+            color_table = cv.bitwise_and(color_table, color_table, mask=color_table_mask)
+            cv.imshow('color_table', color_table)
 
+            make_img = img.copy()
+            hsv_img = cv.cvtColor(make_img, cv.COLOR_BGR2HSV)
+            h, s, v = cv.split(hsv_img)
+            h = np.where(h > 0, h - h % 10, h)
+            color_img_mask = np.where(h <= high_value, h, -1)
+            color_img_mask = np.uint8(np.where(color_img_mask >= low_value, 255, 0))
+            color_img = cv.merge((h, s, v))
+            color_img = cv.cvtColor(color_img, cv.COLOR_HSV2BGR)
+            color_img = cv.bitwise_and(color_img, color_img, mask=color_img_mask)
+            cv.imshow('color_img', color_img)
+        elif k == ord('6'):
+            if low_a < 50:
+                low_a = 50
+            if high_a < 50:
+                high_a = 50
+            # extract circles in img
+            make_img = img.copy()
+            simplify_img = mv.simplify_color(make_img)
+            cut_img = mv.img_filter(simplify_img, show=True)
+
+            # extract circles
+            circles = cv.HoughCircles(cut_img, cv.HOUGH_GRADIENT, 1, 20,
+                                      param1=low_a, param2=high_a, minRadius=20, maxRadius=200)
+            if circles is None:
+                print('Not detected circles')
+                continue
+            circles = np.uint16(np.around(circles))
+
+            # draw circles
+            circle_img = img.copy()
+            for c in circles[0, :]:
+                center = (c[0], c[1])
+                radius = c[2]
+                cv.circle(circle_img, center, radius, (0, 255, 255), 2)
+            cv.imshow('circles_img', circle_img)
     cv.imshow('origin', img)
-
 cv.destroyAllWindows()
