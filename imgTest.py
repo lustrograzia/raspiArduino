@@ -62,10 +62,42 @@ while True:
         else:
             on_track_bar = False
             cv.destroyWindow('origin')
-    elif k == ord('q'):
-        make_img = img.copy()
-        cut_img = mv.img_filter(make_img)
     elif k == ord('p'):
+        make_img = img.copy()
+        simplify_img = mv.simplify_color(make_img)
+        cut_img = cv.cvtColor(simplify_img, cv.COLOR_BGR2GRAY)
+
+        value1 = 200
+        while True:
+            last_circle = None
+            center = None
+            circle_img = make_img.copy()
+            circles = cv.HoughCircles(cut_img, cv.HOUGH_GRADIENT, 1, 20,
+                                      param1=value1, param2=50, minRadius=20, maxRadius=200)
+            if circles is None:
+                print(value1, 'circle is None')
+                value1 -= 1
+                continue
+            else:
+                print(value1, 'circle:', len(circles[0]))
+                for c in circles[0, :]:
+                    center = (c[0], c[1])
+                    radius = c[2]
+                    cv.circle(cut_img, center, radius, (0, 0, 0), -1)
+                    cv.circle(circle_img, center, radius, (0, 255, 255), 2)
+                cv.imshow('circles', circle_img)
+                cv.imshow('cut_img', cut_img)
+                cv.waitKey()
+                print(last_circle, center)
+                print(len(circles[0]))
+                if last_circle == center:
+                    value1 -= 1
+                if len(circles[0]) == 1:
+                    last_circle = center
+                if value1 is 49:
+                    break
+
+    elif k == ord('q'):
         # extract circles in img
         make_img = img.copy()
         simplify_img = mv.simplify_color(make_img)
@@ -97,10 +129,29 @@ while True:
         print(circles[0, 1])
         print(len(circles[0]))
 
+        for i in range(200, 69, -1):
+            circle_img = make_img.copy()
+            circles = cv.HoughCircles(cut_img, cv.HOUGH_GRADIENT, 1, 20,
+                                      param1=i, param2=50, minRadius=20, maxRadius=200)
+            if circles is None:
+                print(i, 'circle is None')
+                continue
+            else:
+                print(i, 'circle:', len(circles[0]))
+                for c in circles[0, :]:
+                    center = (c[0], c[1])
+                    radius = c[2]
+
+                    cv.circle(circle_img, center, radius, (0, 255, 255), 2)
+                cv.imshow('circles', circle_img)
+                cv.waitKey()
+
     elif k == ord('o'):
-        a = np.zeros((480, 640), dtype=np.uint8)
-        cv.circle(a, (320, 240), 20, 255, -1)
-        cv.imshow('circle', a)
+        a = [350, 470]
+        b = [470, 350]
+        c = [183.642, 142.428]
+        print(int(a[0]/c[0]), int(a[1]/c[1]), int(a[0]/c[0])*int(a[1]/c[1]))
+        print(int(b[0]/c[0]), int(b[1]/c[1]), int(b[0]/c[0])*int(b[1]/c[1]))
     elif k == ord('s'):
         # extract circles in img
         make_img = img.copy()
