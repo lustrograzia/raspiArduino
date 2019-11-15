@@ -220,3 +220,92 @@ def extract_circle(img):
     cv.waitKey(0)
 
     return best_circle[1]
+
+
+def print_img_value(img):
+    width = img.shape[1]
+    height = img.shape[0]
+    if len(img.shape) > 2:
+        channel = img.shape[2]
+    else:
+        channel = 1
+
+    # img size configure
+    first_row, first_col = 10, 10
+    row, col = 20, 20
+    # make background img
+    value_img = np.zeros((height * row + first_row * 2, width * col + first_col * 2, 3), np.uint8)
+    # make pixel size
+    color_pixel = np.zeros((row, col, 3), np.uint8)
+    # text size configure
+    text_scale = 0.3
+    # make img
+    text_size = text_scale * 20
+    vertical_center = int((text_size + row)/2)
+    horizontal_center = int((col - text_size * 3)/2)
+    for i in range(width):
+        for j in range(height):
+            pixel_value = img[j, i]
+            color_pixel = np.where(color_pixel >= 0, pixel_value, 0)
+            value_img[first_row+row*j:first_row+row*(j+1), first_col+col*i:first_col+col*(i+1)] = color_pixel
+            if pixel_value < 128:
+                color = (255, 255, 255)
+            else:
+                color = (0, 0, 0)
+            value_img = cv.putText(value_img, str(img[j, i]),
+                                   (first_col+col*i+horizontal_center, first_row+row*j + vertical_center),
+                                   cv.FONT_HERSHEY_COMPLEX, text_scale, color, 1)
+
+    i, j = 0, 0
+    while i <= width:
+        value_img = cv.line(value_img, (first_col + col * i, first_row),
+                            (first_col + col * i, first_row + row * height), (255, 255, 255))
+        i += 1
+    while j <= height:
+        value_img = cv.line(value_img, (first_col, first_row + row * j),
+                            (first_col + col * width, first_row + row * j), (255, 255, 255))
+        j += 1
+    cv.imshow('value', value_img)
+
+
+def color_object_extract(img):
+    # 붉은 색 공 추출
+    color_img = img.copy()
+    center = None
+    hsv_img = cv.cvtColor(color_img, cv.COLOR_BGR2HSV)
+    h, s, v = cv.split(hsv_img)
+    h_cut = cut_value(h, 160, 180)
+
+    # erode dilate img
+    """
+    kernel = np.ones((3, 3), np.uint8)
+    cut_img = cv.erode(h_cut, kernel, iterations=1)
+    cut_img = cv.dilate(cut_img, kernel, iterations=3)
+    cv.imshow('erode', cut_img)
+    """
+
+    result_img = cv.bitwise_and(color_img, color_img, mask=h_cut)
+    gray_img = cv.cvtColor(result_img, cv.COLOR_BGR2GRAY)
+
+    # adaptive histogram equalization
+    clahe = cv.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    hist_img = clahe.apply(gray_img)
+
+    # extract circles
+    circles = cv.HoughCircles(hist_img, cv.HOUGH_GRADIENT, 1, 20,
+                              param1=45, param2=45, minRadius=20, maxRadius=200)
+    if circles is None:
+        print('Not detected circles')
+        return -1
+    circles = np.uint16(np.around(circles))
+
+    # draw circles
+    circle_img = img.copy()
+    if len(circles[0]) > 1:
+        print('another ball in frame')
+    for c in circles[0, :]:
+        center = (c[0], c[1])
+        radius = c[2]
+        cv.circle(circle_img, center, radius, (0, 255, 255), 2)
+    cv.imshow('all circles', circle_img)
+    return center

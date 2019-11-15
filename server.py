@@ -71,6 +71,8 @@ print('server ip: {:s} | port: {:d}'.format(IP, PORT))
 sequence = 0
 client_socket = None
 circle_pos = None
+first_point = None
+second_point = None
 
 while True:
 
@@ -97,6 +99,7 @@ while True:
         print('sequence : 2')
         if first_img is not None:
             circle_pos = mv.extract_circle(first_img)
+            print(circle_pos)
             if circle_pos is -1:
                 first_img = None
                 sequence = 4

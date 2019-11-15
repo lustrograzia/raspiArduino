@@ -7,10 +7,13 @@ import glob
 ex_circles = False
 lx, ly, px, py = 0, 0, 0, 0
 on_mouse = 0
+# press 't' show track bar
 on_track_bar = False
+# press 'n' change img
 img_count = 0
 ex_circle_img = None
 trackWindow = None
+circle_center = None
 
 
 def nothing(x):
@@ -34,8 +37,8 @@ def on_mouse_event(event, x, y, flag, param):
 
 images = [cv.imread(file) for file in glob.glob('D:/doc/pic/test/*.jpg')]
 o_img = images[0]
-img_width = o_img.shape[0]
-img_height = o_img.shape[1]
+img_width = o_img.shape[1]
+img_height = o_img.shape[0]
 
 termination = (cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 1)
 
@@ -63,104 +66,132 @@ while True:
             on_track_bar = False
             cv.destroyWindow('origin')
     elif k == ord('p'):
+        # clahe histogram equalization
         make_img = img.copy()
-        simplify_img = mv.simplify_color(make_img)
-        cut_img = cv.cvtColor(simplify_img, cv.COLOR_BGR2GRAY)
+        gray_img = cv.cvtColor(make_img, cv.COLOR_BGR2GRAY)
+        # adaptive histogram equalization
+        clahe = cv.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        hist_img = clahe.apply(gray_img)
+        # bilateral filtering
+        hist_img = cv.bilateralFilter(hist_img, 9, 75, 75)
+        cut_img = hist_img
+        cv.imshow('hist_img', hist_img)
 
-        value1 = 200
+        param_value = 200
         while True:
-            last_circle = None
-            center = None
             circle_img = make_img.copy()
             circles = cv.HoughCircles(cut_img, cv.HOUGH_GRADIENT, 1, 20,
-                                      param1=value1, param2=50, minRadius=20, maxRadius=200)
+                                      param1=100, param2=param_value, minRadius=0, maxRadius=100)
             if circles is None:
-                print(value1, 'circle is None')
-                value1 -= 1
+                print(param_value, 'circle is None')
+                param_value -= 1
                 continue
             else:
-                print(value1, 'circle:', len(circles[0]))
+                circles = np.uint16(np.around(circles))
+                print(param_value, 'circle:', len(circles[0]))
                 for c in circles[0, :]:
                     center = (c[0], c[1])
                     radius = c[2]
-                    cv.circle(cut_img, center, radius, (0, 0, 0), -1)
                     cv.circle(circle_img, center, radius, (0, 255, 255), 2)
                 cv.imshow('circles', circle_img)
-                cv.imshow('cut_img', cut_img)
                 cv.waitKey()
-                print(last_circle, center)
-                print(len(circles[0]))
-                if last_circle == center:
-                    value1 -= 1
-                if len(circles[0]) == 1:
-                    last_circle = center
-                if value1 is 49:
-                    break
-
+            param_value -= 1
+            if param_value < 50:
+                break
     elif k == ord('q'):
-        # extract circles in img
-        make_img = img.copy()
-        simplify_img = mv.simplify_color(make_img)
-        cut_img = cv.cvtColor(simplify_img, cv.COLOR_BGR2GRAY)
+        # 주위 pixel 값과 중앙 pixel 값의 차이가 일정 값 이상인 pixel 추출
+        make_img = o_img.copy()
+        gray_img = cv.cvtColor(make_img, cv.COLOR_BGR2GRAY)
+        cv.imshow('gray', gray_img)
+        # adaptive histogram equalization
+        """
+        clahe = cv.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        hist_img = clahe.apply(gray_img)
+        cv.imshow('hist', hist_img)
+        """
+        # bilateral filtering
+        """
+        hist_img = cv.bilateralFilter(hist_img, 9, 75, 75)
+        """
+        # canny
+        """
+        edge1 = cv.Canny(hist_img, 30, 100)
+        edge2 = cv.Canny(hist_img, 50, 100)
+        cv.imshow('edge1', edge1)
+        cv.imshow('edge2', edge2)
+        """
+        # compare to around pixel
+        value_img = np.zeros((img_height, img_width), dtype=np.uint8)
+        for i in range(1, img_width - 1):
+            for j in range(1, img_height - 1):
+                img_values = [gray_img[j, i - 1], gray_img[j + 1, i], gray_img[j, i + 1], gray_img[j - 1, i],
+                              gray_img[j - 1, i - 1], gray_img[j - 1, i + 1], gray_img[j + 1, i + 1],
+                              gray_img[j + 1, i - 1]]
+                for v in img_values:
+                    if gray_img[j, i] > v:
+                        compare_value = gray_img[j, i] - v
+                    else:
+                        compare_value = v - gray_img[j, i]
+                    if compare_value > 10:
+                        value_img[j, i] = 255
+                        break
+        cv.imshow('value', value_img)
+        # erode dilate img
+        kernel = np.ones((3, 3), np.uint8)
+        cut_img = cv.erode(value_img, kernel, iterations=1)
+        cut_img = cv.dilate(cut_img, kernel, iterations=1)
+        cv.imshow('erode', cut_img)
+        # contour area
+        contour_img = np.zeros((img_height, img_width, 3), np.uint8)
+        contours, hierarchy = cv.findContours(cut_img, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE)
+        for cnt in contours:
+            cv.drawContours(contour_img, [cnt], 0, (0, 0, 255), 1)
+            x, y, w, h = cv.boundingRect(cnt)
+            area = cv.contourArea(cnt)
+            if area > 100:
+                cv.rectangle(contour_img, (x, y), (x + w, y + h), (0, 255, 0), 1)
+        cv.imshow('contour_img', contour_img)
 
+        """
         # extract circles
         circles = cv.HoughCircles(cut_img, cv.HOUGH_GRADIENT, 1, 20,
-                                  param1=60, param2=50, minRadius=20, maxRadius=200)
+                                  param1=50, param2=50, minRadius=20, maxRadius=200)
         if circles is None:
             print('Not detected circles')
             continue
         circles = np.uint16(np.around(circles))
-        """
+
         # draw circles
-        circle_img = img.copy()
+        circle_img = o_img.copy()
         for c in circles[0, :]:
-            mask = np.ones((img_width, img_height), dtype=np.uint8)
             center = (c[0], c[1])
             radius = c[2]
-
-            cv.circle(mask, center, radius, 0, -1)
-            extract_img = np.ma.array(cut_img, mask=mask)
-            std = np.std(extract_img)
-
-            if std < ex_circle_pos[0]:
-                ex_circle_pos = [std, center, radius]
             cv.circle(circle_img, center, radius, (0, 255, 255), 2)
+        cv.imshow('circles', circle_img)
         """
-        print(circles[0, 1])
-        print(len(circles[0]))
-
-        for i in range(200, 69, -1):
-            circle_img = make_img.copy()
-            circles = cv.HoughCircles(cut_img, cv.HOUGH_GRADIENT, 1, 20,
-                                      param1=i, param2=50, minRadius=20, maxRadius=200)
-            if circles is None:
-                print(i, 'circle is None')
-                continue
-            else:
-                print(i, 'circle:', len(circles[0]))
-                for c in circles[0, :]:
-                    center = (c[0], c[1])
-                    radius = c[2]
-
-                    cv.circle(circle_img, center, radius, (0, 255, 255), 2)
-                cv.imshow('circles', circle_img)
-                cv.waitKey()
-
     elif k == ord('o'):
-        a = [350, 470]
-        b = [470, 350]
-        c = [183.642, 142.428]
-        print(int(a[0]/c[0]), int(a[1]/c[1]), int(a[0]/c[0])*int(a[1]/c[1]))
-        print(int(b[0]/c[0]), int(b[1]/c[1]), int(b[0]/c[0])*int(b[1]/c[1]))
+        # test field
+        make_img = img.copy()
+        gray_img = cv.cvtColor(make_img, cv.COLOR_BGR2GRAY)
+        cv.imshow('gray', gray_img)
+        # adaptive histogram equalization
+        clahe = cv.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        hist_img = clahe.apply(gray_img)
+        cv.imshow('clahe', hist_img)
+        # bilateral filtering
+        hist_img = cv.bilateralFilter(hist_img, 9, 75, 75)
+        cut_img = hist_img
+        cv.imshow('bilateral', hist_img)
     elif k == ord('s'):
         # extract circles in img
         make_img = img.copy()
-        simplify_img = mv.simplify_color(make_img)
-        cut_img = mv.img_filter(simplify_img, show=True)
+        gray_img = cv.cvtColor(make_img, cv.COLOR_BGR2GRAY)
+        clahe = cv.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        hist_img = clahe.apply(gray_img)
 
         # extract circles
-        circles = cv.HoughCircles(cut_img, cv.HOUGH_GRADIENT, 1, 20,
-                                  param1=70, param2=50, minRadius=20, maxRadius=200)
+        circles = cv.HoughCircles(hist_img, cv.HOUGH_GRADIENT, 1, 20,
+                                  param1=70, param2=60, minRadius=20, maxRadius=200)
         if circles is None:
             print('Not detected circles')
             continue
@@ -170,12 +201,12 @@ while True:
         circle_img = img.copy()
         ex_circle_pos = [1, (0, 0), 0]
         for c in circles[0, :]:
-            mask = np.ones((img_width, img_height), dtype=np.uint8)
+            mask = np.ones((img_height, img_width), dtype=np.uint8)
             center = (c[0], c[1])
             radius = c[2]
 
             cv.circle(mask, center, radius, 0, -1)
-            extract_img = np.ma.array(cut_img, mask=mask)
+            extract_img = np.ma.array(hist_img, mask=mask)
             std = np.std(extract_img)
 
             if std < ex_circle_pos[0]:
@@ -198,15 +229,24 @@ while True:
             cv.imshow('rect', ex_circle_img)
         cv.imshow('all circles', circle_img)
     elif k == ord('c'):
-        # trace rect
-        if ex_circle_img is not None:
-            hsv = cv.cvtColor(img, cv.COLOR_BGR2HSV)
-            dst = cv.calcBackProject([hsv], [0, 1], ex_circle_img, [0, 180, 0, 255], 1)
-            cv.imshow('dst', dst)
-            ret, trackWindow = cv.meanShift(dst, trackWindow, termination)
-            x, y, w, h = trackWindow
-            cv.rectangle(img, (x, y), (x+w, y+h), (0, 0, 255), 2)
+        # gray img color value table
+        if lx > px:
+            lx, px = px, lx
+        if ly > py:
+            ly, py = py, ly
+        if lx == px or ly == py:
+            print('Not drag rectangle')
+        else:
+            color_img = o_img.copy()
+            rec_img = color_img[ly:py, lx:px]
+            gray_img = cv.cvtColor(rec_img, cv.COLOR_BGR2GRAY)
+            mv.print_img_value(gray_img)
+
+            hsv_cut_img = cv.cvtColor(rec_img, cv.COLOR_BGR2HSV)
+            h, s, v = cv.split(hsv_cut_img)
+            mv.print_img_value(h)
     elif k == ord('n'):
+        # change image
         img_count += 1
         if img_count == len(images):
             img_count = 0
@@ -220,6 +260,70 @@ while True:
         # initial track bar
         on_track_bar = False
         cv.destroyAllWindows()
+    elif k == ord('b'):
+        # 밝기 범위를 분할해서 원 추출
+        s_img = o_img.copy()
+        gray_img = cv.cvtColor(s_img, cv.COLOR_BGR2GRAY)
+        # adaptive histogram equalization
+        """
+        clahe = cv.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        hist_img = clahe.apply(gray_img)
+        cv.imshow('hist_img', hist_img)
+        """
+        # bilateral filtering
+        blur_img = cv.bilateralFilter(gray_img, 9, 75, 75)
+        cv.imshow('blur_img', blur_img)
+
+        # 0 ~ 255 value
+        c_value = 245
+        while c_value > 0:
+            print('c_value:', c_value)
+            # value area extractw
+            cut_img = cv.inRange(blur_img, c_value, c_value + 10)
+            # extract contour
+            contour_img = cv.cvtColor(cut_img, cv.COLOR_GRAY2BGR)
+            contours, hierarchy = cv.findContours(cut_img, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE)
+            for cnt in contours:
+                cv.drawContours(contour_img, [cnt], 0, (0, 0, 255), 1)
+                x, y, w, h = cv.boundingRect(cnt)
+                area = cv.contourArea(cnt)
+                if area > 100:
+                    cv.rectangle(contour_img, (x, y), (x + w, y + h), (0, 255, 0), 1)
+
+            c_value -= 5
+            cv.imshow('cut_img', cut_img)
+            cv.imshow('contour_img', contour_img)
+            cv.waitKey()
+        cv.destroyWindow('cut_img')
+        cv.destroyWindow('contour_img')
+    elif k == ord('u'):
+        # bgr color value 편차 10 이내 값 추출
+        color_img = o_img.copy()
+        mask_img = np.zeros((img_height, img_width), np.uint8)
+        # std < 5 pixel 255
+        for i in range(img_width):
+            for j in range(img_height):
+                color_value = color_img[j, i]
+                if np.std(color_value) < 5:
+                    mask_img[j, i] = 255
+        cv.imshow('mask_img', mask_img)
+        # erode mask_img
+        kernel = np.ones((3, 3), np.uint8)
+        mask_img = cv.erode(mask_img, kernel, iterations=1)
+        cv.imshow('erode_mask_img', mask_img)
+        # color_img masked mask_img
+        extract_img = cv.bitwise_and(color_img, color_img, mask=mask_img)
+        cv.imshow('extract_img', extract_img)
+        # gray img to 0 less than 100
+        gray_img = cv.cvtColor(extract_img, cv.COLOR_BGR2GRAY)
+        gray_mask = cv.inRange(gray_img, 100, 255)
+        result_img = cv.bitwise_and(extract_img, extract_img, mask=gray_mask)
+        cv.imshow('result_img', result_img)
+    elif k == ord('k'):
+        # 붉은 색 공 추출
+        result = mv.color_object_extract(o_img)
+        if result != -1:
+            print(result)
 
     # loop
     if on_track_bar is True:
@@ -244,14 +348,15 @@ while True:
             cut_gray_img = mv.cut_value(gray_img, one_t, one_t + 10)
             cv.imshow('cut_gray', cut_gray_img)
         elif k == ord('5'):
+            h_value = 5
             # h value(hsv) divide 10 size
             low_a, high_a = mv.overlap_block(low_a, high_a)
-            low_value = low_a - low_a % 10
-            high_value = high_a - high_a % 10
+            low_value = low_a - low_a % h_value
+            high_value = high_a - high_a % h_value
             color_table = mv.create_color_table()
             hsv_color_table = cv.cvtColor(color_table, cv.COLOR_BGR2HSV)
             h, s, v = cv.split(hsv_color_table)
-            h = np.where(h > 0, h - h % 10, h)
+            h = np.where(h > 0, h - h % h_value, h)
             color_table_mask = np.where(h <= high_value, h, -1)
             color_table_mask = np.uint8(np.where(color_table_mask >= low_value, 255, 0))
             color_table = cv.merge((h, s, v))
@@ -262,7 +367,7 @@ while True:
             make_img = img.copy()
             hsv_img = cv.cvtColor(make_img, cv.COLOR_BGR2HSV)
             h, s, v = cv.split(hsv_img)
-            h = np.where(h > 0, h - h % 10, h)
+            h = np.where(h > 0, h - h % h_value, h)
             color_img_mask = np.where(h <= high_value, h, -1)
             color_img_mask = np.uint8(np.where(color_img_mask >= low_value, 255, 0))
             color_img = cv.merge((h, s, v))
