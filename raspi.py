@@ -1,7 +1,7 @@
 
 import cv2 as cv
-import numpy as np
 import m_vision as mv
+import serial
 
 ex_circles = False
 lx, ly, px, py = 0, 0, 0, 0
@@ -51,6 +51,10 @@ while True:
     elif k == ord('w'):
         # write img file
         cv.imwrite('circles_img.jpg', img)
+    elif k == ord('k'):
+        # move robotic arm
+        ard = serial.Serial('', 9600)
+        ard.write('s;'.encode())
     elif k == ord('i'):
         # initial working variable
         # initial draw rectangle
@@ -64,39 +68,8 @@ while True:
     # loop
     if ex_circles:
         make_img = img.copy()
-        cut_img = mv.img_filter(make_img)
-
-        # extract circles
-        circles = cv.HoughCircles(cut_img, cv.HOUGH_GRADIENT, 1, 30,
-                                  param1=70, param2=50, minRadius=0, maxRadius=0)
-        if circles is None:
-            print('Not detected circles')
-            continue
-        circles = np.uint16(np.around(circles))
-
-        # draw circles
-        circle_img = img.copy()
-        best_circle = [100, (0, 0), 0]
-        for c in circles[0, :]:
-            mask = np.ones((img_width, img_height), dtype=np.uint8)
-            center = (c[0], c[1])
-            radius = c[2]
-
-            cv.circle(mask, center, radius, 0, -1)
-            extract_img = np.ma.array(cut_img, mask=mask)
-            std = np.std(extract_img)
-
-            if std < best_circle[0]:
-                best_circle = [std, center, radius]
-            cv.circle(circle_img, center, radius, (0, 255, 255), 2)
-
-        if best_circle[0] is not 100:
-            cv.rectangle(img,
-                         tuple([i - best_circle[2] - 10 for i in best_circle[1]]),
-                         tuple([i + best_circle[2] + 10 for i in best_circle[1]]),
-                         (255, 0, 0), 2)
-
-        cv.imshow('all circles', circle_img)
+        # extract red circle
+        _ = mv.color_object_extract(make_img)
 
     cv.imshow('origin', img)
 

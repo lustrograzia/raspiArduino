@@ -22,12 +22,13 @@ def threaded(client_socket, addr, queue):
                 print('disconnected by ' + addr[0], ':', addr[1])
                 break
 
-            stringData = queue.get()
-            client_socket.send(str(len(stringData)).ljust(16).encode())
-            client_socket.send(stringData)
+            string_data = queue.get()
+            client_socket.send(str(len(string_data)).ljust(16).encode())
+            client_socket.send(string_data)
 
         except ConnectionResetError as e:
             print('Disconnected by ' + addr[0], ':', addr[1])
+            print('error:', e)
             break
 
     client_socket.close()
@@ -46,7 +47,7 @@ def receive_img(socket_name, count):
 def decode_img(socket_name):
     length = receive_img(socket_name, 16)
     string_data = receive_img(socket_name, int(length))
-    img_data = np.fromstring(string_data, dtype=np.uint8)
+    img_data = np.fromstring(str(string_data), dtype=np.uint8)
     decode_img_data = cv.imdecode(img_data, 1)
     now = datetime.now()
     name = now.strftime('%Y%m%d_%H%M%S')
@@ -70,12 +71,15 @@ print('server ip: {:s} | port: {:d}'.format(IP, PORT))
 
 sequence = 0
 client_socket = None
-circle_pos = None
 first_point = None
 second_point = None
 
 while True:
-
+    # sequence 0: wait connect client
+    # sequence 1: receive image data
+    # sequence 2: extract center point
+    # sequence 3: move robotic arm
+    # sequence 8: not detected circles in received image
     if sequence is 0:
         # wait connect
         print('waiting...')
@@ -85,42 +89,47 @@ while True:
     elif sequence is 1:
         # receive client data
         print('sequence : 1')
-        if client_socket is None:
-            sequence = 0
-            continue
         client_data = client_socket.recv(1024)
         client_message = client_data.decode()
         print(client_message)
         if client_message == 'cv_img':
-            first_img = decode_img(client_socket)
+            receive_img = decode_img(client_socket)
             sequence = 2
     elif sequence is 2:
         # extract circles
         print('sequence : 2')
-        if first_img is not None:
-            circle_pos = mv.extract_circle(first_img)
-            print(circle_pos)
-            if circle_pos is -1:
-                first_img = None
-                sequence = 4
+        if receive_img is not None:
+            center = mv.color_object_extract(receive_img)
+            if center is -1:
+                receive_img = None
+                sequence = 8
             else:
-                sequence = 9
+                if first_point is None:
+                    first_point = center
+                else:
+                    second_point = center
+                # move robotic arm
         else:
-            # first_img is None
-            sequence = 4
+            # receive_img is None
+            sequence = 8
     elif sequence is 3:
-        message = 'resend'
+        # move robotic arm
+        message = 'ready_second_data'
         client_socket.send(message.encode())
         sequence = 1
-    elif sequence is 4:
+    elif sequence is 8:
         # not detected circles in received image
-        print('sequence : 4')
+        print('sequence : 8')
         message = 'check object position'
         client_socket.send(message.encode())
         sequence = 1
     elif sequence is 9:
         print('sequence : 9')
         break
+
+    if client_socket is None:
+        sequence = 0
+        continue
 
 cv.destroyAllWindows()
 server_socket.close()

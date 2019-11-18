@@ -40,31 +40,36 @@ def send_img(socket_name):
 
 IP = '10.10.23.10'
 PORT = 8000
+sequence = 0
 
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client_socket.connect((IP, PORT))
-
-sequence = 0
 
 while True:
     if sequence is 0:
         sequence = input('insert number\n'
                          '1 receive server data\n'
                          '3 transfer img\n'
+                         '5 ready transfer\n'
                          '9 stop\n')
     elif sequence is 1:
         print('sequence 1 : receive server data')
         client_data = client_socket.recv(1024)
         client_message = client_data.decode()
         print(client_message)
-        if client_message == 'resend':
-            sequence = 3
+        if client_message == 'ready_second_data':
+            sequence = 5
         elif client_message == 'check object position':
             sequence = 0
     elif sequence is 3:
         print('sequence 3 : transfer img')
         send_img(client_socket)
         sequence = 1
+    elif sequence is 5:
+        print('sequence 5 : ready transfer second img')
+        serial_port = 'COM'
+        baud_rate = 9600
+        ard = serial.Serial(serial_port, baud_rate)
     elif sequence is 9:
         print('sequence 9')
         break
