@@ -265,16 +265,17 @@ def print_img_value(img):
         value_img = cv.line(value_img, (first_col, first_row + row * j),
                             (first_col + col * width, first_row + row * j), (255, 255, 255))
         j += 1
-    cv.imshow('value', value_img)
+    return value_img
 
 
 def color_object_extract(img):
-    # 붉은 색 공 추출
+    # red ball extract
     color_img = img.copy()
     center = None
     hsv_img = cv.cvtColor(color_img, cv.COLOR_BGR2HSV)
     h, s, v = cv.split(hsv_img)
     h_cut = cut_value(h, 160, 180)
+    v_cut = cut_value(v, 50, 255)
 
     # erode dilate img
     """
@@ -285,15 +286,20 @@ def color_object_extract(img):
     """
 
     result_img = cv.bitwise_and(color_img, color_img, mask=h_cut)
+    #result_img = cv.bitwise_and(result_img, result_img, mask=v_cut)
     gray_img = cv.cvtColor(result_img, cv.COLOR_BGR2GRAY)
+    cv.imshow('gray', gray_img)
 
     # adaptive histogram equalization
     clahe = cv.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     hist_img = clahe.apply(gray_img)
+    # bilateral filtering
+    # hist_img = cv.bilateralFilter(hist_img, 9, 75, 75)
+    cv.imshow('hist', hist_img)
 
     # extract circles
     circles = cv.HoughCircles(hist_img, cv.HOUGH_GRADIENT, 1, 20,
-                              param1=45, param2=45, minRadius=20, maxRadius=200)
+                              param1=50, param2=50, minRadius=0, maxRadius=200)
     if circles is None:
         print('Not detected circles')
         return -1

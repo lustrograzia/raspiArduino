@@ -244,7 +244,7 @@ bool isUsefulValue(char n) {
 void serialRead() {
     static bool saveTemp = false;
     static int num;
-    static char temp = "", command = "";
+    static char temp = 0, command = 0;
 
     if(Serial.available() > 0) {
         temp = Serial.read();
@@ -281,13 +281,13 @@ void serialRead() {
                     serialPrint();
                     break;
                 case 'L':
-                    if(r > 0) r--;
+                    if(r > 10) r -= 10;
                     break;
                 case 'R':
-                    if(r < 180) r++;
+                    if(r < 170) r += 10;
                     break;
             }
-            num = 0; command = "";
+            num = 0; command = 0;
         }
     }
 }

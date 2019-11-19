@@ -6,6 +6,7 @@ import serial
 ex_circles = False
 lx, ly, px, py = 0, 0, 0, 0
 on_mouse = 0
+serial_communicate = False
 
 
 def on_mouse_event(event, x, y, flag, param):
@@ -53,8 +54,7 @@ while True:
         cv.imwrite('circles_img.jpg', img)
     elif k == ord('k'):
         # move robotic arm
-        ard = serial.Serial('', 9600)
-        ard.write('s;'.encode())
+        serial_communicate = not serial_communicate
     elif k == ord('i'):
         # initial working variable
         # initial draw rectangle
@@ -70,6 +70,13 @@ while True:
         make_img = img.copy()
         # extract red circle
         _ = mv.color_object_extract(make_img)
+    if serial_communicate:
+        ard = serial.Serial('/dev/ttyACM0', 9600)
+        text = raw_input('input: ')
+        if text == 'exit':
+            serial_communicate = False
+            continue
+        ard.write(text.encode())
 
     cv.imshow('origin', img)
 

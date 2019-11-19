@@ -171,17 +171,19 @@ while True:
         """
     elif k == ord('o'):
         # test field
-        make_img = img.copy()
+        make_img = o_img.copy()
         gray_img = cv.cvtColor(make_img, cv.COLOR_BGR2GRAY)
-        cv.imshow('gray', gray_img)
-        # adaptive histogram equalization
-        clahe = cv.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-        hist_img = clahe.apply(gray_img)
-        cv.imshow('clahe', hist_img)
-        # bilateral filtering
-        hist_img = cv.bilateralFilter(hist_img, 9, 75, 75)
-        cut_img = hist_img
-        cv.imshow('bilateral', hist_img)
+        hsv_img = cv.cvtColor(make_img, cv.COLOR_BGR2HSV)
+        h, s, v = cv.split(hsv_img)
+        x_img = np.zeros((img_height, img_width), np.uint8)
+        kernel = np.zeros((3, 3), np.uint8)
+        for i in range(img_width - 2):
+            for j in range(img_height - 2):
+                kernel = h[j:j+2, i:i+2]
+                std = np.std(kernel)
+                if std > 7:
+                    x_img[j+1, i+1] = 255
+        cv.imshow('x_img', x_img)
     elif k == ord('s'):
         # extract circles in img
         make_img = img.copy()
@@ -240,11 +242,17 @@ while True:
             color_img = o_img.copy()
             rec_img = color_img[ly:py, lx:px]
             gray_img = cv.cvtColor(rec_img, cv.COLOR_BGR2GRAY)
-            mv.print_img_value(gray_img)
+            gray_table = mv.print_img_value(gray_img)
+            cv.imshow('gray_table', gray_table)
 
             hsv_cut_img = cv.cvtColor(rec_img, cv.COLOR_BGR2HSV)
             h, s, v = cv.split(hsv_cut_img)
-            mv.print_img_value(h)
+            h_table = mv.print_img_value(h)
+            s_table = mv.print_img_value(s)
+            v_table = mv.print_img_value(v)
+            cv.imshow('h_table', h_table)
+            cv.imshow('s_table', s_table)
+            cv.imshow('v_table', v_table)
     elif k == ord('n'):
         # change image
         img_count += 1
@@ -296,8 +304,8 @@ while True:
             cv.waitKey()
         cv.destroyWindow('cut_img')
         cv.destroyWindow('contour_img')
+    # bgr color value 편차 10 이내 값 추출
     elif k == ord('u'):
-        # bgr color value 편차 10 이내 값 추출
         color_img = o_img.copy()
         mask_img = np.zeros((img_height, img_width), np.uint8)
         # std < 5 pixel 255
@@ -319,8 +327,23 @@ while True:
         gray_mask = cv.inRange(gray_img, 100, 255)
         result_img = cv.bitwise_and(extract_img, extract_img, mask=gray_mask)
         cv.imshow('result_img', result_img)
+    # std value
+    elif k == ord('y'):
+        make_img = o_img.copy()
+        gray_img = cv.cvtColor(make_img, cv.COLOR_BGR2GRAY)
+        hsv_img = cv.cvtColor(make_img, cv.COLOR_BGR2HSV)
+        h, s, v = cv.split(hsv_img)
+        x_img = np.zeros((img_height, img_width), np.uint8)
+        kernel = np.zeros((3, 3), np.uint8)
+        for i in range(img_width - 2):
+            for j in range(img_height - 2):
+                kernel = h[j:j + 2, i:i + 2]
+                std = np.std(kernel)
+                if std > 7:
+                    x_img[j + 1, i + 1] = 255
+        cv.imshow('x_img', x_img)
+    # red circle extract
     elif k == ord('k'):
-        # 붉은 색 공 추출
         result = mv.color_object_extract(o_img)
         if result != -1:
             print(result)
@@ -330,50 +353,77 @@ while True:
         # get track bar pos
         low_a, high_a, low_b, high_b, low_c, high_c = mv.get_track_bar_pos('origin')
 
+        # rgb track bar
         if k == ord('1'):
-            # rgb track bar
             mv.rgb_track_bar(img, low_a, high_a, low_b, high_b, low_c, high_c)
+        # hsv track bar
         elif k == ord('2'):
-            # hsv track bar
             mv.hsv_track_bar(img, low_a, high_a, low_b, high_b, low_c, high_c)
+        # yuv track bar
         elif k == ord('3'):
-            # yuv track bar
             mv.yuv_track_bar(img, low_a, high_a, low_b, high_b, low_c, high_c)
+        # gray track bar use one
         elif k == ord('4'):
-            # gray track bar use one
             gray_img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
             one_t = low_a
             if one_t >= 255 - 10:
                 one_t = 255 - 10
             cut_gray_img = mv.cut_value(gray_img, one_t, one_t + 10)
             cv.imshow('cut_gray', cut_gray_img)
+        # image divide into value
         elif k == ord('5'):
-            h_value = 5
-            # h value(hsv) divide 10 size
+            divide_value = 5
+            # track bar value
             low_a, high_a = mv.overlap_block(low_a, high_a)
-            low_value = low_a - low_a % h_value
-            high_value = high_a - high_a % h_value
+            low_a = low_a - low_a % divide_value
+            high_a = high_a - high_a % divide_value
+            low_b, high_b = mv.overlap_block(low_b, high_b)
+            low_b = low_b - low_b % divide_value
+            high_b = high_b - high_b % divide_value
+            low_c, high_c = mv.overlap_block(low_c, high_c)
+            low_c = low_c - low_c % divide_value
+            high_c = high_c - high_c % divide_value
+            # h value(hsv) table part
             color_table = mv.create_color_table()
             hsv_color_table = cv.cvtColor(color_table, cv.COLOR_BGR2HSV)
             h, s, v = cv.split(hsv_color_table)
-            h = np.where(h > 0, h - h % h_value, h)
-            color_table_mask = np.where(h <= high_value, h, -1)
-            color_table_mask = np.uint8(np.where(color_table_mask >= low_value, 255, 0))
+            h = np.where(h > 0, h - h % divide_value, h)
+            color_table_mask = np.where(h <= high_a, h, -1)
+            color_table_mask = np.uint8(np.where(color_table_mask >= low_a, 255, 0))
             color_table = cv.merge((h, s, v))
             color_table = cv.cvtColor(color_table, cv.COLOR_HSV2BGR)
             color_table = cv.bitwise_and(color_table, color_table, mask=color_table_mask)
             cv.imshow('color_table', color_table)
-
+            # image hsv part
             make_img = img.copy()
             hsv_img = cv.cvtColor(make_img, cv.COLOR_BGR2HSV)
             h, s, v = cv.split(hsv_img)
-            h = np.where(h > 0, h - h % h_value, h)
-            color_img_mask = np.where(h <= high_value, h, -1)
-            color_img_mask = np.uint8(np.where(color_img_mask >= low_value, 255, 0))
-            color_img = cv.merge((h, s, v))
-            color_img = cv.cvtColor(color_img, cv.COLOR_HSV2BGR)
-            color_img = cv.bitwise_and(color_img, color_img, mask=color_img_mask)
-            cv.imshow('color_img', color_img)
+
+            h_part = np.where(h > 0, h - h % divide_value, h)
+            s_part = np.where(s > 0, s - s % divide_value, s)
+            v_part = np.where(v > 0, v - v % divide_value, v)
+
+            h_mask = np.where(h_part <= high_a, h_part, -1)
+            h_mask = np.uint8(np.where(h_mask >= low_a, 255, 0))
+            s_mask = np.where(s_part <= high_b, s_part, -1)
+            s_mask = np.uint8(np.where(s_mask >= low_b, 255, 0))
+            v_mask = np.where(v_part <= high_c, v_part, -1)
+            v_mask = np.uint8(np.where(v_mask >= low_c, 255, 0))
+
+            h_img = cv.merge((h_part, s, v))
+            h_img = cv.cvtColor(h_img, cv.COLOR_HSV2BGR)
+            h_img = cv.bitwise_and(h_img, h_img, mask=h_mask)
+            cv.imshow('h_img', h_img)
+
+            s_img = cv.merge((h, s_part, v))
+            s_img = cv.cvtColor(s_img, cv.COLOR_HSV2BGR)
+            s_img = cv.bitwise_and(s_img, s_img, mask=s_mask)
+            cv.imshow('s_img', s_img)
+
+            v_img = cv.merge((h, s, v_part))
+            v_img = cv.cvtColor(v_img, cv.COLOR_HSV2BGR)
+            v_img = cv.bitwise_and(v_img, v_img, mask=v_mask)
+            cv.imshow('v_img', v_img)
         elif k == ord('6'):
             if low_a < 50:
                 low_a = 50

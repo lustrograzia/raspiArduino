@@ -24,6 +24,8 @@ def web_cam(queue):
 def send_img(socket_name):
     capture = cv.VideoCapture(-1)
     ret, frame = capture.read()
+    frame = cv.flip(frame, 0)
+    frame = cv.flip(frame, 1)
 
     encode_param = [int(cv.IMWRITE_JPEG_QUALITY), 90]
     result, img_encode = cv.imencode('.jpg', frame, encode_param)
@@ -67,9 +69,7 @@ while True:
         sequence = 1
     elif sequence is 5:
         print('sequence 5 : ready transfer second img')
-        serial_port = 'COM'
-        baud_rate = 9600
-        ard = serial.Serial(serial_port, baud_rate)
+        ard = serial.Serial('/dev/ttyACM0', 9600)
     elif sequence is 9:
         print('sequence 9')
         break

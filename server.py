@@ -47,7 +47,7 @@ def receive_img(socket_name, count):
 def decode_img(socket_name):
     length = receive_img(socket_name, 16)
     string_data = receive_img(socket_name, int(length))
-    img_data = np.fromstring(str(string_data), dtype=np.uint8)
+    img_data = np.fromstring(string_data, dtype=np.uint8)
     decode_img_data = cv.imdecode(img_data, 1)
     now = datetime.now()
     name = now.strftime('%Y%m%d_%H%M%S')
