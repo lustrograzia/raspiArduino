@@ -9,6 +9,7 @@ from datetime import datetime
 
 enclosure_queue = Queue()
 first_img = None
+move_left = None
 
 
 # thread function
@@ -104,19 +105,41 @@ while True:
                 receive_img = None
                 sequence = 8
             else:
-                if first_point is None:
+                """
+                 if first_point is None:
                     first_point = center
+                    sequence = 3
                 else:
                     second_point = center
-                # move robotic arm
+                    sequence = 9
+                """
+                first_point = center
+                sequence = 3
         else:
             # receive_img is None
             sequence = 8
     elif sequence is 3:
         # move robotic arm
-        message = 'ready_second_data'
+        message = ''
+        if first_point[0] > 340:
+            message = 'move left'
+            move_left = True
+        elif first_point[0] < 300:
+            message = 'move right'
+            move_left = False
+        else:
+            print('object placed center')
         client_socket.send(message.encode())
         sequence = 1
+    elif sequence is 5:
+        # calculate position
+        h_angle = 62.2
+        img_width = 640
+        img_height = 480
+        move_angle = 10
+        init_angle = 90 - h_angle / 2
+        first_angle = init_angle + h_angle / img_width * first_point[0]
+        second_angle = init_angle + h_angle / img_width * second_point[0]
     elif sequence is 8:
         # not detected circles in received image
         print('sequence : 8')

@@ -268,6 +268,8 @@ def print_img_value(img):
     return value_img
 
 
+# color object extract use hough circle
+"""
 def color_object_extract(img):
     # red ball extract
     color_img = img.copy()
@@ -277,22 +279,14 @@ def color_object_extract(img):
     h_cut = cut_value(h, 160, 180)
     v_cut = cut_value(v, 50, 255)
 
-    # erode dilate img
-    """
-    kernel = np.ones((3, 3), np.uint8)
-    cut_img = cv.erode(h_cut, kernel, iterations=1)
-    cut_img = cv.dilate(cut_img, kernel, iterations=3)
-    cv.imshow('erode', cut_img)
-    """
-
-    result_img = cv.bitwise_and(color_img, color_img, mask=h_cut)
-    #result_img = cv.bitwise_and(result_img, result_img, mask=v_cut)
-    gray_img = cv.cvtColor(result_img, cv.COLOR_BGR2GRAY)
-    cv.imshow('gray', gray_img)
+    result_img = cv.bitwise_and(v, v, mask=h_cut)
+    # result_img = cv.bitwise_and(result_img, result_img, mask=v_cut)
+    # gray_img = cv.cvtColor(result_img, cv.COLOR_BGR2GRAY)
+    cv.imshow('gray', result_img)
 
     # adaptive histogram equalization
     clahe = cv.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-    hist_img = clahe.apply(gray_img)
+    hist_img = clahe.apply(result_img)
     # bilateral filtering
     # hist_img = cv.bilateralFilter(hist_img, 9, 75, 75)
     cv.imshow('hist', hist_img)
@@ -315,3 +309,49 @@ def color_object_extract(img):
         cv.circle(circle_img, center, radius, (0, 255, 255), 2)
     cv.imshow('all circles', circle_img)
     return center
+"""
+
+
+def color_object_extract(img):
+    make_img = img.copy()
+    gray_img = cv.cvtColor(make_img, cv.COLOR_BGR2GRAY)
+    hsv_img = cv.cvtColor(make_img, cv.COLOR_BGR2HSV)
+    h, s, v = cv.split(hsv_img)
+
+    h_mask = cv.inRange(h, 165, 180)
+
+    sv = np.where(s >= 0, np.uint8(s / 2 + v / 2), 0)
+    sv_mask = cv.inRange(sv, 140, 255)
+
+    # erode dilate img
+    kernel = np.ones((7, 7), np.uint8)
+    h_mask = cv.erode(h_mask, kernel, iterations=1)
+    h_mask = cv.dilate(h_mask, kernel, iterations=1)
+    sv_mask = cv.erode(sv_mask, kernel, iterations=1)
+    sv_mask = cv.dilate(sv_mask, kernel, iterations=1)
+
+    value_mask = cv.bitwise_and(gray_img, gray_img, mask=h_mask)
+    value_mask = cv.bitwise_and(value_mask, value_mask, mask=sv_mask)
+
+    contours, hierarchy = cv.findContours(value_mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+    if contours is not None:
+        contour = contours[0]
+        area = cv.contourArea(contours[0])
+        num = 0
+        for n, c in enumerate(contours):
+            temp_area = cv.contourArea(c)
+            if area < temp_area:
+                area = temp_area
+                num = n
+        contour = contours[num]
+        mmt = cv.moments(contour)
+        cx = int(mmt['m10'] / mmt['m00'])
+        cy = int(mmt['m01'] / mmt['m00'])
+        center = (cx, cy)
+        cv.circle(make_img, center, 2, (0, 255, 255), 2)
+        cv.drawContours(make_img, contours, num, (255, 255, 0), 3)
+        cv.imshow('make', make_img)
+        return center
+    else:
+        print('Not find contour')
+        return -1

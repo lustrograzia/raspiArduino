@@ -3,6 +3,7 @@ import socket
 import numpy as np
 import cv2 as cv
 import serial
+import time
 
 
 def web_cam(queue):
@@ -59,8 +60,10 @@ while True:
         client_data = client_socket.recv(1024)
         client_message = client_data.decode()
         print(client_message)
-        if client_message == 'ready_second_data':
+        if client_message == 'move left':
             sequence = 5
+        elif client_message == 'move right':
+            sequence = 6
         elif client_message == 'check object position':
             sequence = 0
     elif sequence is 3:
@@ -68,8 +71,17 @@ while True:
         send_img(client_socket)
         sequence = 1
     elif sequence is 5:
-        print('sequence 5 : ready transfer second img')
+        print('sequence 5 : robotic arm rotate left')
         ard = serial.Serial('/dev/ttyACM0', 9600)
+        ard.write('L'.encode())
+        time.sleep(1)
+        sequence = 3
+    elif sequence is 6:
+        print('sequence 6 : robotic arm rotate right')
+        ard = serial.Serial('/dev/ttyACM0', 9600)
+        ard.write('R'.encode())
+        time.sleep(1)
+        sequence = 3
     elif sequence is 9:
         print('sequence 9')
         break

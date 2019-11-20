@@ -175,25 +175,63 @@ while True:
         gray_img = cv.cvtColor(make_img, cv.COLOR_BGR2GRAY)
         hsv_img = cv.cvtColor(make_img, cv.COLOR_BGR2HSV)
         h, s, v = cv.split(hsv_img)
-        x_img = np.zeros((img_height, img_width), np.uint8)
-        kernel = np.zeros((3, 3), np.uint8)
-        for i in range(img_width - 2):
-            for j in range(img_height - 2):
-                kernel = h[j:j+2, i:i+2]
-                std = np.std(kernel)
-                if std > 7:
-                    x_img[j+1, i+1] = 255
-        cv.imshow('x_img', x_img)
+
+        h_mask = cv.inRange(h, 165, 180)
+
+        sv = np.where(s >= 0, np.uint8(s/2 + v/2), 0)
+        sv_mask = cv.inRange(sv, 140, 255)
+
+        # erode dilate img
+        kernel = np.ones((7, 7), np.uint8)
+        h_mask = cv.erode(h_mask, kernel, iterations=1)
+        h_mask = cv.dilate(h_mask, kernel, iterations=1)
+        sv_mask = cv.erode(sv_mask, kernel, iterations=1)
+        sv_mask = cv.dilate(sv_mask, kernel, iterations=1)
+
+        value_mask = cv.bitwise_and(gray_img, gray_img, mask=h_mask)
+        value_mask = cv.bitwise_and(value_mask, value_mask, mask=sv_mask)
+        """
+        contours, hierarchy = cv.findContours(value_mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+        contour = contours[0]
+        mmt = cv.moments(contour)
+        cx = int(mmt['m10'] / mmt['m00'])
+        cy = int(mmt['m01'] / mmt['m00'])
+        cv.circle(make_img, (cx, cy), 3, (255, 0, 255))
+        cv.drawContours(make_img, contours, 0, (255, 255, 0), 3)
+        cv.imshow('make', make_img)
+        """
+
+        # cv.imshow('h', h)
+        # cv.imshow('s', s)
+        # cv.imshow('v', v)
+        cv.imshow('h_mask', h_mask)
+        cv.imshow('sv_mask', sv_mask)
+        cv.imshow('sv', sv)
+        cv.imshow('value_img', value_mask)
     elif k == ord('s'):
         # extract circles in img
-        make_img = img.copy()
+        make_img = o_img.copy()
         gray_img = cv.cvtColor(make_img, cv.COLOR_BGR2GRAY)
-        clahe = cv.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-        hist_img = clahe.apply(gray_img)
+        hsv_img = cv.cvtColor(make_img, cv.COLOR_BGR2HSV)
+        h, s, v = cv.split(hsv_img)
+
+
+
+        sv = np.where(s >= 0, np.uint8(s / 2 + v / 2), 0)
+        value_img = np.where(h >= 0, np.uint8(h / 2 + sv / 2), 0)
+        value_mask = cv.inRange(value_img, 150, 255)
+
+        # erode dilate img
+        kernel = np.ones((5, 5), np.uint8)
+        # cut_img = cv.erode(value_img, kernel, iterations=1)
+        value_mask = cv.dilate(value_mask, kernel, iterations=2)
+
+        value_img = cv.bitwise_and(v, v, mask=value_mask)
+        cv.imshow('cut_value', value_img)
 
         # extract circles
-        circles = cv.HoughCircles(hist_img, cv.HOUGH_GRADIENT, 1, 20,
-                                  param1=70, param2=60, minRadius=20, maxRadius=200)
+        circles = cv.HoughCircles(value_img, cv.HOUGH_GRADIENT, 1, 20,
+                                  param1=50, param2=50, minRadius=0, maxRadius=200)
         if circles is None:
             print('Not detected circles')
             continue
@@ -203,32 +241,9 @@ while True:
         circle_img = img.copy()
         ex_circle_pos = [1, (0, 0), 0]
         for c in circles[0, :]:
-            mask = np.ones((img_height, img_width), dtype=np.uint8)
             center = (c[0], c[1])
             radius = c[2]
-
-            cv.circle(mask, center, radius, 0, -1)
-            extract_img = np.ma.array(hist_img, mask=mask)
-            std = np.std(extract_img)
-
-            if std < ex_circle_pos[0]:
-                ex_circle_pos = [std, center, radius]
             cv.circle(circle_img, center, radius, (0, 255, 255), 2)
-
-        if ex_circle_pos[0] is not 1:
-            st_point = [i - ex_circle_pos[2] for i in ex_circle_pos[1]]
-            ed_point = tuple([i + ex_circle_pos[2] for i in ex_circle_pos[1]])
-            if st_point[0] > 1000:
-                st_point[0] = 0
-            if st_point[1] > 1000:
-                st_point[1] = 0
-            st_point = tuple(st_point)
-            trackWindow = (st_point[0], st_point[1],
-                           ed_point[0] - st_point[0],
-                           ed_point[1] - st_point[1])
-            ex_circle_img = img[st_point[1]:ed_point[1], st_point[0]:ed_point[0]]
-            print(trackWindow)
-            cv.imshow('rect', ex_circle_img)
         cv.imshow('all circles', circle_img)
     elif k == ord('c'):
         # gray img color value table
@@ -247,12 +262,18 @@ while True:
 
             hsv_cut_img = cv.cvtColor(rec_img, cv.COLOR_BGR2HSV)
             h, s, v = cv.split(hsv_cut_img)
+            # s = cv.bitwise_not(s)
             h_table = mv.print_img_value(h)
             s_table = mv.print_img_value(s)
             v_table = mv.print_img_value(v)
             cv.imshow('h_table', h_table)
             cv.imshow('s_table', s_table)
             cv.imshow('v_table', v_table)
+
+            sv = np.where(s >= 0, np.uint8(s/2 + v/2), 0)
+
+            a_table = mv.print_img_value(sv)
+            cv.imshow('a_table', a_table)
     elif k == ord('n'):
         # change image
         img_count += 1

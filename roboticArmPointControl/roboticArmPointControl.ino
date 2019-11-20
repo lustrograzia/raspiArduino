@@ -281,10 +281,10 @@ void serialRead() {
                     serialPrint();
                     break;
                 case 'L':
-                    if(r > 10) r -= 10;
+                    if(r > 10) r--;
                     break;
                 case 'R':
-                    if(r < 170) r += 10;
+                    if(r < 170) r++;
                     break;
             }
             num = 0; command = 0;
