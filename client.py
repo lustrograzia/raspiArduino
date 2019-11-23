@@ -4,6 +4,8 @@ import numpy as np
 import cv2 as cv
 import serial
 import time
+import m_vision as mv
+import sys
 
 
 def web_cam(queue):
@@ -23,10 +25,12 @@ def web_cam(queue):
 
 
 def send_img(socket_name):
+    sys.stdout.flush()
     capture = cv.VideoCapture(-1)
     ret, frame = capture.read()
     frame = cv.flip(frame, 0)
     frame = cv.flip(frame, 1)
+    capture.release()
 
     encode_param = [int(cv.IMWRITE_JPEG_QUALITY), 90]
     result, img_encode = cv.imencode('.jpg', frame, encode_param)
@@ -43,13 +47,16 @@ def send_img(socket_name):
 
 IP = '10.10.23.10'
 PORT = 8000
+serial_port = '/dev/ttyACM0'
 sequence = 0
+first_send_img = True
 
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client_socket.connect((IP, PORT))
 
 while True:
     if sequence is 0:
+        mv.now_time()
         sequence = input('insert number\n'
                          '1 receive server data\n'
                          '3 transfer img\n'
@@ -57,6 +64,7 @@ while True:
                          '9 stop\n')
     elif sequence is 1:
         print('sequence 1 : receive server data')
+        mv.now_time()
         client_data = client_socket.recv(1024)
         client_message = client_data.decode()
         print(client_message)
@@ -68,17 +76,20 @@ while True:
             sequence = 0
     elif sequence is 3:
         print('sequence 3 : transfer img')
+        mv.now_time()
         send_img(client_socket)
         sequence = 1
     elif sequence is 5:
+        mv.now_time()
         print('sequence 5 : robotic arm rotate left')
-        ard = serial.Serial('/dev/ttyACM0', 9600)
+        ard = serial.Serial(serial_port, 9600)
         ard.write('L'.encode())
         time.sleep(1)
         sequence = 3
     elif sequence is 6:
+        mv.now_time()
         print('sequence 6 : robotic arm rotate right')
-        ard = serial.Serial('/dev/ttyACM0', 9600)
+        ard = serial.Serial(serial_port, 9600)
         ard.write('R'.encode())
         time.sleep(1)
         sequence = 3

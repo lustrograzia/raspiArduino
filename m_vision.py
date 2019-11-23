@@ -1,6 +1,7 @@
 
 import cv2 as cv
 import numpy as np
+from datetime import datetime
 
 
 def num_zeros(img):
@@ -334,7 +335,7 @@ def color_object_extract(img):
     value_mask = cv.bitwise_and(value_mask, value_mask, mask=sv_mask)
 
     contours, hierarchy = cv.findContours(value_mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
-    if contours is not None:
+    if len(contours) > 0:
         contour = contours[0]
         area = cv.contourArea(contours[0])
         num = 0
@@ -350,8 +351,30 @@ def color_object_extract(img):
         center = (cx, cy)
         cv.circle(make_img, center, 2, (0, 255, 255), 2)
         cv.drawContours(make_img, contours, num, (255, 255, 0), 3)
-        cv.imshow('make', make_img)
+        # cv.imshow('make', make_img)
         return center
     else:
         print('Not find contour')
         return -1
+
+
+def now_time(string=''):
+    now = datetime.now()
+    time = now.isoformat(sep=' ')
+    string = str(string)
+    str_time = string + time
+    print(str_time)
+    return
+
+
+def pixel_to_angle(center):
+    h_angle = 62.2
+    img_width = 640
+    img_height = 480
+    pixel = center[0]
+    if pixel > img_width / 2:
+        pixel = pixel - img_width / 2 + 1
+    else:
+        pixel = img_width / 2 - pixel
+    angle = h_angle / img_width * pixel
+    return angle

@@ -6,48 +6,29 @@ from multiprocessing import Queue
 from _thread import *
 import m_vision as mv
 from datetime import datetime
+import sys
+import math
 
 enclosure_queue = Queue()
 first_img = None
 move_left = None
 
 
-# thread function
-def threaded(client_socket, addr, queue):
-    print('Connected by :', addr[0], ':', addr[1])
-    while True:
-        try:
-            data = client_socket.recv(1024)
-
-            if not data:
-                print('disconnected by ' + addr[0], ':', addr[1])
-                break
-
-            string_data = queue.get()
-            client_socket.send(str(len(string_data)).ljust(16).encode())
-            client_socket.send(string_data)
-
-        except ConnectionResetError as e:
-            print('Disconnected by ' + addr[0], ':', addr[1])
-            print('error:', e)
-            break
-
-    client_socket.close()
-
-
-def receive_img(socket_name, count):
+def receive_img_data(socket_name, count):
     temp_buf = b''
     while count:
         new_buf = socket_name.recv(count)
-        if not new_buf: return None
+        if not new_buf:
+            print('not new_buf')
+            return None
         temp_buf += new_buf
         count -= len(new_buf)
     return temp_buf
 
 
 def decode_img(socket_name):
-    length = receive_img(socket_name, 16)
-    string_data = receive_img(socket_name, int(length))
+    length = receive_img_data(socket_name, 16)
+    string_data = receive_img_data(socket_name, int(length))
     img_data = np.fromstring(string_data, dtype=np.uint8)
     decode_img_data = cv.imdecode(img_data, 1)
     now = datetime.now()
@@ -74,6 +55,7 @@ sequence = 0
 client_socket = None
 first_point = None
 second_point = None
+received_img = None
 
 while True:
     # sequence 0: wait connect client
@@ -90,41 +72,60 @@ while True:
     elif sequence is 1:
         # receive client data
         print('sequence : 1')
+        mv.now_time()
         client_data = client_socket.recv(1024)
         client_message = client_data.decode()
         print(client_message)
         if client_message == 'cv_img':
-            receive_img = decode_img(client_socket)
-            sequence = 2
+            received_img = decode_img(client_socket)
+            sequence = 11
+    elif sequence is 11:
+        center = mv.color_object_extract(received_img)
+        if center == -1:
+            print('not have point')
+            sequence = 1
+            continue
+        if first_point is None:
+            first_point = center
+            message = 'move right'
+            client_socket.send(message.encode())
+            sequence = 1
+        else:
+            second_point = center
+            sequence = 12
+    elif sequence is 12:
+        print(first_point, second_point)
+        message = 'check object position'
+        client_socket.send(message.encode())
+        sequence = 5
     elif sequence is 2:
         # extract circles
         print('sequence : 2')
-        if receive_img is not None:
-            center = mv.color_object_extract(receive_img)
+        mv.now_time()
+        if received_img is not None:
+            center = mv.color_object_extract(received_img)
             if center is -1:
-                receive_img = None
+                received_img = None
                 sequence = 8
             else:
-                """
-                 if first_point is None:
+                if first_point is None:
                     first_point = center
                     sequence = 3
                 else:
                     second_point = center
                     sequence = 9
-                """
-                first_point = center
-                sequence = 3
         else:
             # receive_img is None
             sequence = 8
     elif sequence is 3:
         # move robotic arm
+        print('sequence : 3')
+        mv.now_time()
         message = ''
-        if first_point[0] > 340:
+        if first_point[0] > 330:
             message = 'move left'
             move_left = True
-        elif first_point[0] < 300:
+        elif first_point[0] < 310:
             message = 'move right'
             move_left = False
         else:
@@ -133,13 +134,43 @@ while True:
         sequence = 1
     elif sequence is 5:
         # calculate position
-        h_angle = 62.2
-        img_width = 640
-        img_height = 480
-        move_angle = 10
-        init_angle = 90 - h_angle / 2
-        first_angle = init_angle + h_angle / img_width * first_point[0]
-        second_angle = init_angle + h_angle / img_width * second_point[0]
+        print('sequence : 5')
+        PI = 3.14159265358979
+        DEGREE = PI / 180
+        theta_a = mv.pixel_to_angle(first_point)
+        theta_b = mv.pixel_to_angle(second_point)
+        theta_c = 20
+        len_origin = 104 - 90
+
+        m1 = math.tan(DEGREE * (90 - theta_a))
+        m2 = math.tan(DEGREE * (90 - theta_b - theta_c))
+        p1x = 0
+        p1y = len_origin * -1
+        p2x = len_origin * -1 * math.sin(DEGREE * theta_c)
+        p2y = len_origin * -1 * math.cos(DEGREE * theta_c)
+        k1 = p1y - p1x * m1
+        k2 = p2y - p2x * m1
+        p3x = (k2 - k1) / (m1 - m2)
+        p3y = m1 * p3x + k1
+        L = math.sqrt(math.pow(p3x, 2) + math.pow(p3y, 2))
+        theta = L * math.acos(p3x / L)
+        print('t_a:', theta_a)
+        print('t_b:', theta_b)
+        print('t_c:', theta_c)
+        print('L0:', len_origin)
+        print('m1:', m1)
+        print('m2:', m2)
+        print('p1x:', p1x)
+        print('p1y:', p1y)
+        print('p2x:', p2x)
+        print('p2y:', p2y)
+        print('p3x:', p3x)
+        print('p3y:', p3y)
+        print('k1:', k1)
+        print('k2:', k2)
+        print('L:', L)
+        print('theta:', theta)
+        sequence = 1
     elif sequence is 8:
         # not detected circles in received image
         print('sequence : 8')

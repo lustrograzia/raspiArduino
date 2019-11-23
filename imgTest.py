@@ -170,6 +170,36 @@ while True:
         cv.imshow('circles', circle_img)
         """
     elif k == ord('o'):
+        make_img = o_img.copy()
+        encode_param = [int(cv.IMWRITE_JPEG_QUALITY), 90]
+        result, img_encode = cv.imencode('.jpg', make_img, encode_param)
+        img_data = np.array(img_encode)
+        string_data = img_data.tostring()
+
+        print(encode_param)
+        print(result)
+        # print(img_encode)
+        # print(img_data)
+        # print(string_data)
+
+        img_data = np.fromstring(string_data, dtype=np.uint8)
+        decode_img_data = cv.imdecode(img_data, 1)
+        print(decode_img_data)
+        cv.imshow('cv', decode_img_data)
+    elif k == ord('k'):
+        a = [1, 2]
+        b = [3, 4]
+        a_ar = np.array(np.uint8(a))
+        b_ar = np.array(np.uint8(b))
+        a_str = a_ar.tostring()
+        b_str = b_ar.tostring()
+        print(a_str)
+        print(b_str)
+        c = b''
+        c += a_str
+        c += b_str
+        print(c[0:2])
+    elif k == ord('f'):
         # test field
         make_img = o_img.copy()
         gray_img = cv.cvtColor(make_img, cv.COLOR_BGR2GRAY)
@@ -178,7 +208,7 @@ while True:
 
         h_mask = cv.inRange(h, 165, 180)
 
-        sv = np.where(s >= 0, np.uint8(s/2 + v/2), 0)
+        sv = np.where(s >= 0, np.uint8(s / 2 + v / 2), 0)
         sv_mask = cv.inRange(sv, 140, 255)
 
         # erode dilate img

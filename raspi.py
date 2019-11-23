@@ -33,6 +33,8 @@ img_height = frame.shape[1]
 while True:
     # read cam frame
     _, frame = cap.read()
+    frame = cv.flip(frame, 0)
+    frame = cv.flip(frame, 1)
     img = frame.copy()
 
     # mouse callback
