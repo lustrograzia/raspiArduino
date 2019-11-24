@@ -187,18 +187,9 @@ while True:
         print(decode_img_data)
         cv.imshow('cv', decode_img_data)
     elif k == ord('k'):
-        a = [1, 2]
-        b = [3, 4]
-        a_ar = np.array(np.uint8(a))
-        b_ar = np.array(np.uint8(b))
-        a_str = a_ar.tostring()
-        b_str = b_ar.tostring()
-        print(a_str)
-        print(b_str)
-        c = b''
-        c += a_str
-        c += b_str
-        print(c[0:2])
+        make_img = o_img.copy()
+        area = mv.color_object_extract(make_img, 1)
+        print(area)
     elif k == ord('f'):
         # test field
         make_img = o_img.copy()

@@ -313,7 +313,7 @@ def color_object_extract(img):
 """
 
 
-def color_object_extract(img):
+def color_object_extract(img, show=0, area=0):
     make_img = img.copy()
     gray_img = cv.cvtColor(make_img, cv.COLOR_BGR2GRAY)
     hsv_img = cv.cvtColor(make_img, cv.COLOR_BGR2HSV)
@@ -337,21 +337,25 @@ def color_object_extract(img):
     contours, hierarchy = cv.findContours(value_mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
     if len(contours) > 0:
         contour = contours[0]
-        area = cv.contourArea(contours[0])
+        o_area = cv.contourArea(contours[0])
         num = 0
         for n, c in enumerate(contours):
             temp_area = cv.contourArea(c)
-            if area < temp_area:
-                area = temp_area
+            if o_area < temp_area:
+                o_area = temp_area
                 num = n
         contour = contours[num]
+        if area:
+            return cv.contourArea(contour)
         mmt = cv.moments(contour)
+
         cx = int(mmt['m10'] / mmt['m00'])
         cy = int(mmt['m01'] / mmt['m00'])
         center = (cx, cy)
         cv.circle(make_img, center, 2, (0, 255, 255), 2)
         cv.drawContours(make_img, contours, num, (255, 255, 0), 3)
-        cv.imshow('make', make_img)
+        if show:
+            cv.imshow('make', make_img)
         return center
     else:
         print('Not find contour')
@@ -368,13 +372,15 @@ def now_time(string=''):
 
 
 def pixel_to_angle(center):
-    h_angle = 62.2
+    h_angle = 57.26
     img_width = 640
     img_height = 480
     pixel = center[0]
+    left = False
     if pixel > img_width / 2:
-        pixel = pixel - img_width / 2 + 1
+        pixel = pixel - img_width / 2
     else:
+        left = True
         pixel = img_width / 2 - pixel
     angle = h_angle / img_width * pixel
-    return angle
+    return angle, left
