@@ -351,7 +351,7 @@ def color_object_extract(img):
         center = (cx, cy)
         cv.circle(make_img, center, 2, (0, 255, 255), 2)
         cv.drawContours(make_img, contours, num, (255, 255, 0), 3)
-        # cv.imshow('make', make_img)
+        cv.imshow('make', make_img)
         return center
     else:
         print('Not find contour')

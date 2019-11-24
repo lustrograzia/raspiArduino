@@ -378,23 +378,8 @@ while True:
         gray_mask = cv.inRange(gray_img, 100, 255)
         result_img = cv.bitwise_and(extract_img, extract_img, mask=gray_mask)
         cv.imshow('result_img', result_img)
-    # std value
-    elif k == ord('y'):
-        make_img = o_img.copy()
-        gray_img = cv.cvtColor(make_img, cv.COLOR_BGR2GRAY)
-        hsv_img = cv.cvtColor(make_img, cv.COLOR_BGR2HSV)
-        h, s, v = cv.split(hsv_img)
-        x_img = np.zeros((img_height, img_width), np.uint8)
-        kernel = np.zeros((3, 3), np.uint8)
-        for i in range(img_width - 2):
-            for j in range(img_height - 2):
-                kernel = h[j:j + 2, i:i + 2]
-                std = np.std(kernel)
-                if std > 7:
-                    x_img[j + 1, i + 1] = 255
-        cv.imshow('x_img', x_img)
     # red circle extract
-    elif k == ord('k'):
+    elif k == ord('y'):
         result = mv.color_object_extract(o_img)
         if result != -1:
             print(result)

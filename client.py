@@ -45,7 +45,7 @@ def send_img(socket_name):
     cv.imshow('img', frame)
 
 
-IP = '10.10.23.10'
+IP = '192.168.0.17'
 PORT = 8000
 serial_port = '/dev/ttyACM0'
 sequence = 0
@@ -72,7 +72,7 @@ while True:
             sequence = 5
         elif client_message == 'move right':
             sequence = 6
-        elif client_message == 'check object position':
+        elif client_message == 'client init':
             sequence = 0
     elif sequence is 3:
         print('sequence 3 : transfer img')

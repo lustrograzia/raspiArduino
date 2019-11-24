@@ -39,7 +39,8 @@ def decode_img(socket_name):
 
 # 10.10.23.34 num 5 pos ip
 # 10.10.23.10 num 10 pos ip
-IP = '10.10.23.10'
+# 10.10.23.11 num 11 pos ip
+IP = '192.168.0.17'
 PORT = 8000
 
 # AF_INET : IPv4, AF_INET6 : IPv6, SOCK_DGRAM : UDP, SOCK_STREAM : TCP
@@ -77,9 +78,10 @@ while True:
         client_message = client_data.decode()
         print(client_message)
         if client_message == 'cv_img':
-            received_img = decode_img(client_socket)
-            sequence = 11
+            sequence = 12
     elif sequence is 11:
+        # receive img and calculate distance
+        received_img = decode_img(client_socket)
         center = mv.color_object_extract(received_img)
         if center == -1:
             print('not have point')
@@ -92,12 +94,25 @@ while True:
             sequence = 1
         else:
             second_point = center
-            sequence = 12
+            print(first_point, second_point)
+            message = 'client init'
+            client_socket.send(message.encode())
+            sequence = 5
     elif sequence is 12:
-        print(first_point, second_point)
-        message = 'check object position'
-        client_socket.send(message.encode())
-        sequence = 5
+        received_img = decode_img(client_socket)
+        center = mv.color_object_extract(received_img)
+        if center == -1:
+            print('not have point')
+            sequence = 1
+            continue
+        if center[0] > 330:
+            client_socket.send('move left'.encode())
+        elif center[0] < 310:
+            client_socket.send('move right'.encode())
+        else:
+            print('align center')
+            client_socket.send('client init'.encode())
+            sequence = 1
     elif sequence is 2:
         # extract circles
         print('sequence : 2')
