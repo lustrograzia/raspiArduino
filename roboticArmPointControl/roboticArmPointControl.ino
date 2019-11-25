@@ -23,7 +23,7 @@
 #include <Servo.h>
 
 const double pi = 3.14159265358979;
-const int firstBar = 105, secondBar = 97;
+const int firstBar = 104, secondBar = 98;
 const int SERVOS = 5;
 const int motor[SERVOS] = {2, 3, 9, 8, 4};
 const int valueInit[SERVOS] = {90, 0, 90, 0, 0};
@@ -189,44 +189,33 @@ void picker() {
 }
 
 void initial() {
-    int correct = 1;
-    while(correct) {
-        if(value[1] > 135) valueDown(1);
-        else if(value[2] < 45) valueUp(2);
+    bool init_a = true;
+    bool init_b = true;
+    while(init_a) {
+        if(value[4] > 0) valueDown(4);
+        else if(value[3] < 180) valueUp(3);
+        else if(value[1] > 150) valueDown(1);
+        else if(value[2] < 30) valueUp(2);
+        else if(value[1] > 120) valueDown(1);
+        else if(value[2] < 60) valueUp(2);
         else if(value[1] > 90) valueDown(1);
         else if(value[2] < 90) valueUp(2);
-        else if(value[2] > 90) valueDown(2);
-        else if(value[3] > 0) valueDown(3);
+        else init_a = false;
+        servoMove(100);
+    }
+    while(init_b) {
+        if(value[2] > 90) valueDown(2);
         else if(value[1] > 0) valueDown(1);
+        else if(value[3] > 0) valueDown(3);
         else if(value[0] < 90) valueUp(0);
         else if(value[0] > 90) valueDown(0);
-        else if(value[4] > 0) valueDown(4);
-        
+        else init_b = false;
         servoMove(50);
-        correct = 0;
-        for(int i = 0; i < SERVOS; i++) {
-            if(value[i] != valueInit[i]) correct = 1;
-        }
     }
     h = -105;
     v = 97;
     r = 90;
     p = 0;
-}
-
-void sequentialMovement() {
-    static int sequence = -1;
-    sequence++;
-    Serial.print("  sequence = ");
-    Serial.println(sequence);
-    switch (sequence) {
-        case 0: h = 80; v = 10; break;
-        case 1: h = 200; v = 10; break;
-        //case 2: p = 70; break;
-        //case 3: r = 70; break;
-        case 4: h = 0; v = 200; break;
-        case 5: h = 0; v = 100; sequence = -1; break;
-    }
 }
 
 bool isNum(char n) {
@@ -321,16 +310,16 @@ void loop() {
         p = valueInit[4];
     }
 
-    positionChange();
+    //positionChange();
     value3();
     valueChange(h, v);
     
     margin();
-    rotate();
-    picker();
+    //rotate();
+    //picker();
 
     if(positionX() > 50 && positionY() < 50) {
-        servoMove(100);
+        servoMove(80);
     } else if(positionX() > 0 && positionY() < 100) {
         servoMove(50);
     } else {

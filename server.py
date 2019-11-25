@@ -35,6 +35,18 @@ def decode_img(socket_name):
     return decode_img_data
 
 
+def show_angle_img(img):
+    x = 640 / 62.2 * 10
+    cv.line(img, (320, 0), (320, 480), (0, 0, 255))
+    x0 = int(x)
+    n = 0
+    while x0 < 640:
+        x0 = int(x * n)
+        n += 1
+        cv.line(img, (x0, 0), (x0, 480), (0, 0, 255))
+    cv.imshow('line img', img)
+
+
 def write_img(img):
     now = datetime.now()
     name = now.strftime('%Y%m%d_%H%M%S')
@@ -51,12 +63,20 @@ def pick_sequence(socket_name):
         while True:
             received_img = decode_img(client_socket)
             contour_area = mv.color_object_extract(received_img, area=1)
+            write_img(received_img)
             print(contour_area)
-            if contour_area < 100000:
+            if contour_area < 30000:
+                h += 30
+                message = 'h' + str(h) + ';'
+                socket_name.send(message.encode())
+            elif contour_area < 40000:
                 h += 10
                 message = 'h' + str(h) + ';'
                 socket_name.send(message.encode())
-                time.sleep(0.5)
+            elif contour_area < 70000:
+                h += 5
+                message = 'h' + str(h) + ';'
+                socket_name.send(message.encode())
             else:
                 print('pick sequence 2')
                 socket_name.send('pick sequence 2'.encode())
@@ -68,7 +88,7 @@ def pick_sequence(socket_name):
 # 10.10.23.34 num 5 pos ip
 # 10.10.23.10 num 10 pos ip
 # 10.10.23.11 num 11 pos ip
-IP = '192.168.0.17'
+IP = '10.10.23.10'
 PORT = 8000
 
 # AF_INET : IPv4, AF_INET6 : IPv6, SOCK_DGRAM : UDP, SOCK_STREAM : TCP
@@ -106,7 +126,7 @@ while True:
         client_message = client_data.decode()
         print(client_message)
         if client_message == 'cv_img':
-            sequence = 11
+            sequence = 12
         elif client_message == 'transfer one image':
             sequence = 15
         elif client_message == 'end':
@@ -123,7 +143,7 @@ while True:
             sequence = 1
             continue
         if first_point is None:
-            cv.putText(received_img, 'first', (10, 50), cv.FONT_HERSHEY_SCRIPT_SIMPLEX, 2, (255, 255, 255), 2)
+            cv.putText(received_img, 'first', (10, 50), cv.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 2)
             write_img(received_img)
             first_point = center
             if center[0] > 320:
@@ -141,7 +161,7 @@ while True:
         else:
             if second_point == center:
                 second_point = center
-                cv.putText(received_img, 'second', (10, 50), cv.FONT_HERSHEY_SCRIPT_SIMPLEX, 2, (255, 255, 255), 2)
+                cv.putText(received_img, 'second', (10, 50), cv.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 2)
                 write_img(received_img)
                 print(first_point, second_point)
                 client_socket.send('client init'.encode())
@@ -159,7 +179,8 @@ while True:
             sequence = 1
             continue
         print(center)
-        cam_angle = 57.26
+        # cam_angle = 57.26
+        cam_angle = 62.2
         angle = cam_angle / 640 * center[0]
         print('angle :', angle)
         if angle < cam_angle / 2:
@@ -176,7 +197,7 @@ while True:
             client_socket.send(angle.encode())
             sequence = 1
         else:
-            print('align center')
+            print('align center', center[0])
             # pick sequence
             pick_sequence(client_socket)
             sequence = 1
@@ -188,10 +209,10 @@ while True:
         name = now.strftime('%Y%m%d_%H%M%S')
         cv.imwrite('d:/doc/pic/test/' + name + '.jpg', received_img)
         # show contour
-        center = mv.color_object_extract(received_img, 1, 1)
+        center, result = mv.color_object_extract(received_img, 1)
         if center is not -1:
             print(center)
-            cv.imshow('contour', received_img)
+            cv.imshow('contour', result)
             cv.waitKey()
             cv.destroyAllWindows()
         sequence = 1

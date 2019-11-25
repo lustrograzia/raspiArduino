@@ -321,22 +321,27 @@ def color_object_extract(img, show=0, area=0):
 
     h_mask = cv.inRange(h, 165, 180)
 
-    sv = np.where(s >= 0, np.uint8(s / 2 + v / 2), 0)
-    sv_mask = cv.inRange(sv, 140, 255)
+    # s = cv.equalizeHist(s)
+    # v = cv.equalizeHist(v)
+
+    # sv = np.where(s >= 0, np.uint8(s / 2 + v / 2), 0)
+    # sv_mask = cv.inRange(sv, 140, 255)
+    sv_mask = cv.inRange(s, 140, 255)
 
     # erode dilate img
+    """
     kernel = np.ones((7, 7), np.uint8)
     h_mask = cv.erode(h_mask, kernel, iterations=1)
     h_mask = cv.dilate(h_mask, kernel, iterations=1)
     sv_mask = cv.erode(sv_mask, kernel, iterations=1)
     sv_mask = cv.dilate(sv_mask, kernel, iterations=1)
+    """
 
     value_mask = cv.bitwise_and(gray_img, gray_img, mask=h_mask)
     value_mask = cv.bitwise_and(value_mask, value_mask, mask=sv_mask)
 
     contours, hierarchy = cv.findContours(value_mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
     if len(contours) > 0:
-        contour = contours[0]
         o_area = cv.contourArea(contours[0])
         num = 0
         for n, c in enumerate(contours):
@@ -352,11 +357,13 @@ def color_object_extract(img, show=0, area=0):
         cx = int(mmt['m10'] / mmt['m00'])
         cy = int(mmt['m01'] / mmt['m00'])
         center = (cx, cy)
+        result = center
         cv.circle(make_img, center, 2, (0, 255, 255), 2)
         cv.drawContours(make_img, contours, num, (255, 255, 0), 3)
         if show:
-            cv.imshow('make', make_img)
-        return center
+            result = result, make_img
+            return result
+        return result
     else:
         print('Not find contour')
         return -1
@@ -384,3 +391,24 @@ def pixel_to_angle(center):
         pixel = img_width / 2 - pixel
     angle = h_angle / img_width * pixel
     return angle, left
+
+
+def degree_line(img):
+    x = 640 / 62.2 * 1
+    x0 = 320
+    n = 0
+    x1 = 320
+    while x1 < 640:
+        x1 = int(x0 + x * n)
+        x2 = int(x0 - x * n)
+        if n % 10 is 0:
+            cv.line(img, (x1, 0), (x1, 480), (0, 0, 255))
+            cv.line(img, (x2, 0), (x2, 480), (0, 0, 255))
+        elif n % 10 is 5:
+            cv.line(img, (x1, 0), (x1, 480), (255, 0, 0))
+            cv.line(img, (x2, 0), (x2, 480), (255, 0, 0))
+        else:
+            cv.line(img, (x1, 0), (x1, 480), (255, 0, 255))
+            cv.line(img, (x2, 0), (x2, 480), (255, 0, 255))
+        n += 1
+    cv.imshow('ex', img)
