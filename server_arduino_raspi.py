@@ -9,10 +9,7 @@ from datetime import datetime
 import sys
 import math
 import time
-
-enclosure_queue = Queue()
-first_img = None
-move_left = None
+import serial
 
 
 def receive_img_data(socket_name, count):
@@ -86,6 +83,8 @@ def pick_sequence(socket_name):
         print('pick sequence 1 error')
 
 
+# 10.10.23.3 num 3 pos ip
+# 10.10.23.4 num 4 pos ip
 # 10.10.23.34 num 5 pos ip
 # 10.10.23.10 num 10 pos ip
 # 10.10.23.11 num 11 pos ip
@@ -103,11 +102,12 @@ print('server ip: {:s} | port: {:d}'.format(IP, PORT))
 
 sequence = 0
 client_socket = None
-first_point = None
-second_point = None
-received_img = None
+
+serial_port = ""
+ard = serial.Serial(serial_port, 9600)
 
 while True:
+    mv.now_time()
     # sequence 0: wait connect client
     # sequence 1: receive image data
     # sequence 2: extract center point
@@ -120,18 +120,22 @@ while True:
         print('Connected by', address[0], ':', address[1])
         sequence = 1
     elif sequence is 1:
+        sequence = input('sequence 2 : receive client message\n')
+    elif sequence is 2:
         # receive client data
-        print('sequence : 1')
-        mv.now_time()
+        print('sequence : 2')
         client_data = client_socket.recv(1024)
         client_message = client_data.decode()
         print(client_message)
-        if client_message == 'cv_img':
-            sequence = 12
-        elif client_message == 'transfer one image':
-            sequence = 15
-        elif client_message == 'end':
-            sequence = 9
+    elif sequence is 3:
+        # receive client img
+        print('sequence 3 : receive client img')
+        client_socket.send('send img'.encode())
+        received_img = decode_img(client_socket)
+        cv.imshow('img', received_img)
+        k = cv.waitKey(1)
+        if k == 27:
+            sequence = 1
     elif sequence is 11:
         # receive img and calculate distance
         print('sequence : 11')
@@ -304,6 +308,10 @@ while True:
     elif sequence is 9:
         print('sequence : 9')
         break
+
+    if client_socket is None:
+        sequence = 0
+        continue
 
 cv.destroyAllWindows()
 server_socket.close()

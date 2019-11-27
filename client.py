@@ -86,12 +86,26 @@ while True:
         client_socket.send('transfer one image'.encode())
         send_img(client_socket)
         sequence = 0
+    elif sequence is 22:
+        print('sequence 22 : input data send arduino')
+        message = raw_input('command:')
+        if message == 'exit':
+            sequence = 0
+            continue
+        elif message == '2':
+            sequence = 2
+            continue
+        ard.write(message)
     elif sequence is 3:
         print('sequence 3 : transfer img')
         mv.now_time()
         client_socket.send('cv_img'.encode())
         send_img(client_socket)
         sequence = 1
+    elif sequence is 4:
+        print('sequence 4 : delay start')
+        time.sleep(10)
+        sequence = 3
     elif sequence is 5:
         print('sequence 5 : robotic arm rotate left', mv.now_time())
         for _ in range(n):
@@ -120,8 +134,9 @@ while True:
                 break
             ard.write(client_message)
         # pick sequence 2
+        print('sequence 7 : pick sequence 2')
         ard.write('p75;')
-        time.sleep(4)
+        time.sleep(3)
         ard.write('h50;')
         time.sleep(2)
         ard.write('v50;r150;')
