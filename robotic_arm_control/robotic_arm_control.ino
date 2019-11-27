@@ -155,7 +155,7 @@ void initial() {
         else init_b = false;
         servo_move(100);
     }
-    h = -105;
+    h = -104;
     v = 97;
     r = 90;
     p = 0;
@@ -177,6 +177,7 @@ void serialRead() {
     static bool saveTemp = false;
     static int num;
     static char temp = 0, command = 0;
+    static bool negative = false;
 
     if(Serial.available() > 0) {
         temp = Serial.read();
@@ -186,16 +187,22 @@ void serialRead() {
         if(isUsefulValue(temp)) {
             command = temp;
             num = 0;
+        } else if (temp == 45) {
+            negative = true;
         } else if(isNum(temp)) {
             num *= 10;
             num += temp - 48;
         } else if(isUsefulValue(command)) {
             switch(command) {
                 case 'h':
-                    h = constrain(num, -100, 200);
+                    if(negative)
+                        num *= -1;
+                    h = constrain(num, -120, 200);
                     break;
                 case 'v':
-                    v = constrain(num, 0, 200);
+                    if(negative)
+                        num += -1;
+                    v = constrain(num, -50, 200);
                     break;
                 case 'r':
                     r = constrain(num, 0, 180);
@@ -210,13 +217,13 @@ void serialRead() {
                     serialPrint();
                     break;
                 case 'L':
-                    if(r < 180) r++;
-                    break;
-                case 'R':
                     if(r > 0) r--;
                     break;
+                case 'R':
+                    if(r < 180) r++;
+                    break;
             }
-            num = 0; command = 0;
+            num = 0; command = 0; negative = false;
         }
     }
 }

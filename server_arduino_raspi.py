@@ -83,6 +83,24 @@ def pick_sequence(socket_name):
         print('pick sequence 1 error')
 
 
+def read_value_list(find=None):
+    ard.write(b'm;')
+    while True:
+        msg = ard.readline().decode()
+        find_value = msg.find('value')
+        if find_value != -1:
+            break
+    msg = msg.strip().split('  ')
+    msg = [i.split(' = ') for i in msg]
+    if find is None:
+        return msg
+    else:
+        for i in msg:
+            if i[0] == find:
+                return int(float(i[1]))
+        return -1
+
+
 # 10.10.23.3 num 3 pos ip
 # 10.10.23.4 num 4 pos ip
 # 10.10.23.34 num 5 pos ip
@@ -103,16 +121,15 @@ print('server ip: {:s} | port: {:d}'.format(IP, PORT))
 sequence = 0
 client_socket = None
 
-serial_port = ""
+# sequence 3 loop command
+extract_object = False
+align_center = False
+
+serial_port = "COM7"
 ard = serial.Serial(serial_port, 9600)
 
 while True:
-    mv.now_time()
-    # sequence 0: wait connect client
-    # sequence 1: receive image data
-    # sequence 2: extract center point
-    # sequence 3: move robotic arm
-    # sequence 8: not detected circles in received image
+    # mv.now_time()
     if sequence is 0:
         # wait connect
         print('waiting...')
@@ -120,7 +137,9 @@ while True:
         print('Connected by', address[0], ':', address[1])
         sequence = 1
     elif sequence is 1:
-        sequence = input('sequence 2 : receive client message\n')
+        sequence = int(input('sequence 2 : receive client message\n'
+                             'sequence 3 : receive client img\n'
+                             'sequence 9 : exit\n'))
     elif sequence is 2:
         # receive client data
         print('sequence : 2')
@@ -132,186 +151,52 @@ while True:
         print('sequence 3 : receive client img')
         client_socket.send('send img'.encode())
         received_img = decode_img(client_socket)
-        cv.imshow('img', received_img)
+
         k = cv.waitKey(1)
         if k == 27:
-            sequence = 1
-    elif sequence is 11:
-        # receive img and calculate distance
-        print('sequence : 11')
-        received_img = decode_img(client_socket)
-
-        center = mv.color_object_extract(received_img)
-        if center == -1:
-            print('not have point')
-            client_socket.send('client init'.encode())
+            cv.destroyWindow('img')
             sequence = 1
             continue
-        if first_point is None:
-            cv.putText(received_img, 'first', (10, 50), cv.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 2)
-            write_img(received_img)
-            first_point = center
-            if center[0] > 320:
-                client_socket.send('move right'.encode())
-                #client_socket.send('20'.encode())
-                sequence = 1
-            else:
-                client_socket.send('move left'.encode())
-                #client_socket.send('20'.encode())
-                sequence = 1
-        elif second_point is None:
-            second_point = center
-            client_socket.send('send img'.encode())
-            sequence = 1
-        else:
-            if second_point == center:
-                second_point = center
-                cv.putText(received_img, 'second', (10, 50), cv.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 2)
-                write_img(received_img)
-                print(first_point, second_point)
-                client_socket.send('client init'.encode())
-                sequence = 5
-            else:
-                second_point = center
-                client_socket.send('send img'.encode())
-                sequence = 1
-    elif sequence is 12:
-        print('sequence : 12')
-        received_img = decode_img(client_socket)
-        center = mv.color_object_extract(received_img)
-        if center == -1:
-            print('not have point')
+        elif k == ord('s'):
+            extract_object = not extract_object
+        elif k == ord('k'):
+            align_center = not align_center
+        elif k == ord('m'):
+            print(read_value_list())
+
+        if extract_object:
+            area, center, object_img = mv.color_object_extract(received_img)
+            if area is not -1:
+                print(center)
+                received_img = object_img
+
+                if align_center:
+                    if center[0] > 350 or center[0] < 290:
+                        r = read_value_list('r')
+                        r -= int(62.2 / 640 * (center[0] - 320) / 2)
+                        ard.write(('r' + str(r) + ';').encode())
+                    elif center[0] > 330 or center[0] < 310:
+                        r = read_value_list('r')
+                        r -= int(62.2 / 640 * (center[0] - 320))
+                        ard.write(('r' + str(r) + ';').encode())
+                    else:
+                        print('align center')
+                        align_center = False
+
+        cv.imshow('img', received_img)
+    elif sequence is 4:
+        # serial communicate
+        print('sequence 4 : serial communicate')
+        command = input('command:')
+
+        if command == 'exit':
             sequence = 1
             continue
-        print(center)
-        # cam_angle = 57.26
-        cam_angle = 62.2
-        angle = cam_angle / 640 * center[0]
-        print('angle :', angle)
-        if angle < cam_angle / 2:
-            angle = str(int(cam_angle / 2 - angle))
-        else:
-            angle = str(int(angle - cam_angle / 2))
-        print('angle :', angle)
-        if center[0] > 325 and int(angle) > 0:
-            client_socket.send('move right'.encode())
-            client_socket.send(angle.encode())
-            sequence = 1
-        elif center[0] < 315 and int(angle) > 0:
-            client_socket.send('move left'.encode())
-            client_socket.send(angle.encode())
-            sequence = 1
-        else:
-            print('align center', center[0])
-            # pick sequence
-            pick_sequence(client_socket)
-            sequence = 1
-    elif sequence is 15:
-        # receive one image
-        received_img = decode_img(client_socket)
-        # write image
-        now = datetime.now()
-        name = now.strftime('%Y%m%d_%H%M%S')
-        cv.imwrite('d:/doc/pic/test/' + name + '.jpg', received_img)
-        # show contour
-        center, result = mv.color_object_extract(received_img, 1)
-        if center is not -1:
-            print(center)
-            cv.imshow('contour', result)
-            cv.waitKey()
-            cv.destroyAllWindows()
-        sequence = 1
-    elif sequence is 2:
-        # extract circles
-        print('sequence : 2')
-        mv.now_time()
-        if received_img is not None:
-            center = mv.color_object_extract(received_img)
-            if center is -1:
-                received_img = None
-                sequence = 8
-            else:
-                if first_point is None:
-                    first_point = center
-                    sequence = 3
-                else:
-                    second_point = center
-                    sequence = 9
-        else:
-            # receive_img is None
-            sequence = 8
-    elif sequence is 3:
-        # move robotic arm
-        print('sequence : 3')
-        mv.now_time()
-        message = ''
-        if first_point[0] > 330:
-            message = 'move left'
-            move_left = True
-        elif first_point[0] < 310:
-            message = 'move right'
-            move_left = False
-        else:
-            print('object placed center')
-        client_socket.send(message.encode())
-        sequence = 1
-    elif sequence is 5:
-        # calculate position
-        print('sequence : 5')
-        PI = 3.14159265358979
-        DEGREE = PI / 180
-        theta_a, a_direction = mv.pixel_to_angle(first_point)
-        theta_b, b_direction = mv.pixel_to_angle(second_point)
-        if a_direction is not b_direction:
-            theta_b = theta_b * -1
-        theta_c = 20
-        # len_origin = 104 - 90
-        len_origin = 155
-
-        m1 = math.tan(DEGREE * (90 - theta_a))
-        m2 = math.tan(DEGREE * (90 - theta_b - theta_c))
-        p1x = 0
-        p1y = len_origin
-        p2x = len_origin * math.sin(DEGREE * theta_c)
-        p2y = len_origin * math.cos(DEGREE * theta_c)
-        k1 = p1y - p1x * m1
-        k2 = p2y - p2x * m1
-        p3x = (k2 - k1) / (m1 - m2)
-        p3y = m1 * p3x + k1
-        L = math.sqrt(math.pow(p3x, 2) + math.pow(p3y, 2))
-        theta = L * math.acos(p3x / L)
-        print('t_a:', theta_a)
-        print('t_b:', theta_b)
-        print('t_c:', theta_c)
-        print('L0:', len_origin)
-        print('m1:', m1)
-        print('m2:', m2)
-        print('p1x:', p1x)
-        print('p1y:', p1y)
-        print('p2x:', p2x)
-        print('p2y:', p2y)
-        print('p3x:', p3x)
-        print('p3y:', p3y)
-        print('k1:', k1)
-        print('k2:', k2)
-        print('L:', L)
-        print('theta:', theta)
-        first_point = None
-        second_point = None
-        sequence = 1
-    elif sequence is 8:
-        # not detected circles in received image
-        print('sequence : 8')
-        message = 'check object position'
-        client_socket.send(message.encode())
-        sequence = 1
+        ard.write(command)
     elif sequence is 9:
         print('sequence : 9')
+        client_socket.send('exit'.encode())
         break
-
-    if client_socket is None:
-        sequence = 0
-        continue
 
 cv.destroyAllWindows()
 server_socket.close()

@@ -313,7 +313,7 @@ def color_object_extract(img):
 """
 
 
-def color_object_extract(img, show=0, area=0):
+def color_object_extract(img):
     make_img = img.copy()
     gray_img = cv.cvtColor(make_img, cv.COLOR_BGR2GRAY)
     hsv_img = cv.cvtColor(make_img, cv.COLOR_BGR2HSV)
@@ -350,23 +350,21 @@ def color_object_extract(img, show=0, area=0):
                 o_area = temp_area
                 num = n
         contour = contours[num]
-        if area:
-            return cv.contourArea(contour)
+        area = cv.contourArea(contour)
         mmt = cv.moments(contour)
 
         cx = int(mmt['m10'] / mmt['m00'])
         cy = int(mmt['m01'] / mmt['m00'])
         center = (cx, cy)
-        result = center
+
         cv.circle(make_img, center, 2, (0, 255, 255), 2)
+        cv.drawContours(make_img, contours, num, (255, 0, 0), 3)
         cv.drawContours(make_img, contours, num, (255, 255, 0), 3)
-        if show:
-            result = result, make_img
-            return result
-        return result
+
+        return area, center, make_img
     else:
         print('Not find contour')
-        return -1
+        return -1, 0, 0
 
 
 def now_time(string=''):
