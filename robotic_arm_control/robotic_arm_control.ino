@@ -11,6 +11,7 @@ double x1, x2, y1, y2, h, v, r, p, n;
 double v1, v2;
 
 bool value3_auto = false;
+bool pick_sequence = false;
 
 Servo myservo[SERVOS];
 
@@ -47,7 +48,7 @@ void valueDown(int servo) {
 }
 
 void setValue3(void) {
-    value[3] = constrain(90 - value[1] + value[2], 0, 180);
+    value[3] = constrain(90 - value[1] + value[2] - 10, 0, 180);
 }
 
 double position_x(void) {
@@ -100,7 +101,6 @@ void aim() {
 }
 
 void margin() {
-  /*
     if(position_x() < h) {
         if(v2 > value[2] + 1) {
             valueUp(2);
@@ -127,7 +127,7 @@ void margin() {
         }
     } else {
         aim();
-    }*/
+    }
     aim();
     if(value[0] < r) {
         valueUp(0);
@@ -181,7 +181,7 @@ bool isNum(char n) {
 }
 
 void serial_read() {
-    static String command = "hvrpnmia";
+    static String command = "hvrpnmias";
     if(Serial.available() > 0) {
         String inString = Serial.readStringUntil('\n');
         Serial.println(inString);
@@ -194,6 +194,8 @@ void serial_read() {
                     initial();
                 } else if(inString[i] == 'm') {
                     serial_print();
+                } else if(inString[i] == 's') {
+                    pick_sequence = true;
                 } else {
                     c = inString[i];
                     for(int j = i + 1; j < inString.length(); j++) {
@@ -210,6 +212,47 @@ void serial_read() {
                 }
             }
         }
+    }
+}
+
+void pick_object(){
+    static int sequence = 1;
+    switch(sequence) {
+        case 1:
+            p = 70;
+            if(value[4] == p)
+                sequence++;
+            break;
+        case 2:
+            v = 50; h = 100;
+            if(abs(position_x() - h) < 3 && abs(position_y() - v) < 3)
+                sequence++;
+            break;
+        case 3:
+            r = 170;
+            if(value[0] == r)
+                sequence++;
+            break;
+        case 4:
+            v = -40;
+            if(abs(position_y() - v) < 3)
+                sequence++;
+            break;
+        case 5:
+            p = 0;
+            if(value[4] == p)
+                sequence++;
+            break;
+        case 6:
+            v = 50;
+            if(abs(position_y() - v) < 3)
+                sequence++;
+            break;
+        case 7:
+            r = 90; v = 100; h = 0;
+            sequence = 1;
+            pick_sequence = false;
+            break;
     }
 }
 
@@ -242,7 +285,7 @@ void input_value(char command, int num) {
 void serial_print() {
     Serial.print("  value[0] = ");
     Serial.print(value[0]);
-    Serial.print("  value[1] = ");
+    /*Serial.print("  value[1] = ");
     Serial.print(value[1]);
     Serial.print("  value[2] = ");
     Serial.print(value[2]);
@@ -265,23 +308,29 @@ void serial_print() {
     Serial.print("  p = ");
     Serial.print(p);
     Serial.print("  n = ");
-    Serial.println(n);
+    Serial.println(n);*/
+    Serial.print("  h = ");
+    Serial.println(int(position_x()));
 }
 
 void loop() {
-    if(value3_auto) {
+    if(value3_auto)
         setValue3();
-    }
+    if(pick_sequence)
+        pick_object();
+        
     value_change(h, v);
 
     margin();
 
-    if(position_x() > 50 && position_y < 50) {
-        servo_move(100);
-    } else if(position_x() > 0 && position_y < 100) {
-        servo_move(80);
+    if(pick_sequence) {
+        servo_move(150);
+    } else if(position_x() > 50 && position_y() < 50) {
+        servo_move(200);
+    } else if(position_x() > 0 && position_y() < 100) {
+        servo_move(150);
     } else {
-        servo_move(50);
+        servo_move(100);
     }
     
     serial_read();

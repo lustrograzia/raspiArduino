@@ -106,7 +106,7 @@ def read_value_list(find=None):
 # 10.10.23.34 num 5 pos ip
 # 10.10.23.10 num 10 pos ip
 # 10.10.23.11 num 11 pos ip
-IP = '10.10.23.10'
+IP = '192.168.0.17'
 PORT = 8000
 
 # AF_INET : IPv4, AF_INET6 : IPv6, SOCK_DGRAM : UDP, SOCK_STREAM : TCP
@@ -131,7 +131,7 @@ align_v = False
 move_sequence = 0
 move_bottom = False
 
-serial_port = "COM7"
+serial_port = "COM3"
 ard = serial.Serial(serial_port, 9600)
 
 while True:
@@ -173,74 +173,72 @@ while True:
 
         if extract_object:
             area, center, object_img = mv.color_object_extract(received_img)
-            if area is not -1:
-                print(center, end=" ")
+            if area is not -1 or set_bottom is True:
+                print(pre_center, center, end=" ")
                 received_img = object_img
                 if align_center:
-                    if center[0] < pre_center[0] + 1 or center[0] > pre_center[0] - 1:
-                        if center[0] > 360 or center[0] < 280:
-                            r = read_value_list('value[0]')
-                            print('r:', r, end=" ")
-                            r -= int(62.2 / 640 * (center[0] - 320) / 3 * 2)
-                            ard.write(('r' + str(r)).encode())
-                        elif center[0] > 330 or center[0] < 310:
-                            r = read_value_list('value[0]')
-                            print('r:', r, end=" ")
-                            r -= int(62.2 / 640 * (center[0] - 320))
-                            ard.write(('r' + str(r)).encode())
-                        else:
-                            print('align h center')
-                            align_h = True
-                            align_center = False
-                            set_bottom = True
-                            ard.write('a1h100v-40'.encode())
-                            time.sleep(2)
-                if set_bottom:
-                    if abs(pre_center[0] - center[0]) < 5 and abs(pre_center[1] - center[1]) < 5:
-                        print('ready')
-                        ard.write('a0'.encode())
+                    #if abs(center[0] - pre_center[0]) < 10:
+                    if abs(center[0] - 320) > 40:
+                        r = read_value_list('value[0]')
+                        print('r:', r, end=" ")
+                        r -= int(62.2 / 640 * (center[0] - 320) / 3 * 2)
+                        ard.write(('r' + str(r)).encode())
+                        time.sleep(1)
+                    elif abs(center[0] - 320) > 10:
+                        r = read_value_list('value[0]')
+                        print('r:', r, end=" ")
+                        r -= int(62.2 / 640 * (center[0] - 320))
+                        ard.write(('r' + str(r)).encode())
+                        time.sleep(0.7)
+                    else:
+                        print('align h center')
+                        align_h = True
+                        align_center = False
+                        ard.write('a1h100v-20'.encode())
+                        time.sleep(3.5)
                         move_sequence = 1
-                        set_bottom = False
                 if move_sequence:
                     print(area)
                     if move_sequence is 1:
-                        if area < 50000:
-                            h = read_value_list('h')
-                            h += 30
-                            ard.write(('h' + str(h)).encode())
-                        elif area < 70000:
-                            h = read_value_list('h')
-                            h += 20
-                            ard.write(('h' + str(h)).encode())
-                        elif area < 100000:
-                            h = read_value_list('h')
-                            h += 10
-                            ard.write(('h' + str(h)).encode())
-                        else:
-                            move_sequence += 1
+                        if abs(pre_center[1] - center[1]) < 30:
+                            if area < 50000:
+                                h = read_value_list('h')
+                                h += 40
+                                ard.write(('h' + str(h)).encode())
+                                time.sleep(0.5)
+                            elif area < 70000:
+                                h = read_value_list('h')
+                                h += 30
+                                ard.write(('h' + str(h)).encode())
+                                time.sleep(0.4)
+                            elif area < 100000:
+                                h = read_value_list('h')
+                                h += 20
+                                ard.write(('h' + str(h)).encode())
+                                time.sleep(0.3)
+                            else:
+                                move_sequence += 1
                     elif move_sequence is 2:
+                        """
                         ard.write('p70'.encode())
                         time.sleep(3)
-                        ard.write('a1v0h100'.encode())
+                        ard.write('a1v50h100'.encode())
+                        time.sleep(2.5)
+                        ard.write('r170'.encode())
                         time.sleep(3)
-                        ard.write('r170v-40'.encode())
-                        time.sleep(3)
+                        ard.write('v-30'.encode())
+                        time.sleep(2)
                         ard.write('p0'.encode())
                         time.sleep(2)
                         ard.write('v50'.encode())
-                        time.sleep(1)
+                        time.sleep(2)
                         ard.write('r90v100h0'.encode())
+                        """
+                        ard.write('s'.encode())
                         move_bottom = False
                         extract_object = False
-                    if center[1] > 280 or center[1] < 200:
-                        n = read_value_list('value[3]')
-                        print('n:', n)
-                        n -= int(48.8 / 480 * (center[1] - 240))
-                        ard.write(('n' + str(n)).encode())
-                    else:
-                        print('align v center')
-                        align_v = True
-                pre_center = center
+                        move_sequence = 0
+                pre_center = [int((pre_center[0] + center[0]) / 2), int((pre_center[1] + center[1]) / 2)]
 
         cv.imshow('img', received_img)
     elif sequence is 4:

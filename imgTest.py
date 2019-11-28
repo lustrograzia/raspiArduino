@@ -274,7 +274,7 @@ while True:
     # hsv value area extract hough circle
     elif k == ord('j'):
         make_img = img.copy()
-        gray_img = cv.cvtColor(make_img, cv.COLOR_BGR2GRAY)
+        #gray_img = cv.cvtColor(make_img, cv.COLOR_BGR2GRAY)
         hsv_img = cv.cvtColor(make_img, cv.COLOR_BGR2HSV)
         h, s, v = cv.split(hsv_img)
 
@@ -284,12 +284,16 @@ while True:
         # erode dilate img
         kernel = np.ones((7, 7), np.uint8)
         h_mask = cv.erode(h_mask, kernel, iterations=1)
-        h_mask = cv.dilate(h_mask, kernel, iterations=1)
+        h_mask = cv.dilate(h_mask, kernel, iterations=3)
         s_mask = cv.erode(s_mask, kernel, iterations=1)
-        s_mask = cv.dilate(s_mask, kernel, iterations=1)
+        s_mask = cv.dilate(s_mask, kernel, iterations=3)
+
+        gray_img = np.where(s >= 0, np.uint8(s / 2 + v / 2), 0)
 
         value_mask = cv.bitwise_and(gray_img, gray_img, mask=h_mask)
         value_mask = cv.bitwise_and(value_mask, value_mask, mask=s_mask)
+
+        cv.imshow('mask', value_mask)
 
         circles = cv.HoughCircles(value_mask, cv.HOUGH_GRADIENT, 1, 20,
                                   param1=50, param2=50, minRadius=0, maxRadius=100)

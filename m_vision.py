@@ -351,6 +351,11 @@ def color_object_extract(img):
                 num = n
         contour = contours[num]
         area = cv.contourArea(contour)
+
+        if area < 1000:
+            print('Not find contour')
+            return -1, (0, 0), 0
+
         mmt = cv.moments(contour)
 
         cx = int(mmt['m10'] / mmt['m00'])
@@ -358,7 +363,6 @@ def color_object_extract(img):
         center = (cx, cy)
 
         cv.circle(make_img, center, 2, (0, 255, 255), 2)
-        cv.drawContours(make_img, contours, num, (255, 0, 0), 3)
         cv.drawContours(make_img, contours, num, (255, 255, 0), 3)
 
         return area, center, make_img
