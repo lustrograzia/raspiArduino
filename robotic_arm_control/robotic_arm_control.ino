@@ -4,12 +4,13 @@ const double pi = 3.14159265358979;
 const int first_bar = 104, second_bar = 97;
 const int SERVOS = 5;
 const int motor[SERVOS] = {2, 3, 9, 8, 4};
-const int value_init[SERVOS] = {90, 180, 90, 0, 0};
+const int value_init[SERVOS] = {90, 150, 130, 50, 0};
 
 int value[SERVOS] = {0};
-double x1, x2, y1, y2, h = 999, v, r, p;
+double x1, x2, y1, y2, h, v, r, p, n;
 double v1, v2;
-char keyValue[] = "hvrpsimwLR";
+
+bool value3_auto = false;
 
 Servo myservo[SERVOS];
 
@@ -19,6 +20,12 @@ void setup() {
         value[i] = value_init[i];
     }
     Serial.begin(9600);
+
+    h = position_x();
+    v = position_y();
+    r = value_init[0];
+    p = value_init[4];
+    n = value_init[3];
 }
 
 void servo_move(int count) {
@@ -92,7 +99,8 @@ void aim() {
     }
 }
 
-void margin() { // typing
+void margin() {
+  /*
     if(position_x() < h) {
         if(v2 > value[2] + 1) {
             valueUp(2);
@@ -119,7 +127,8 @@ void margin() { // typing
         }
     } else {
         aim();
-    }
+    }*/
+    aim();
     if(value[0] < r) {
         valueUp(0);
     } else if(value[0] > r) {
@@ -129,6 +138,11 @@ void margin() { // typing
         valueUp(4);
     } else if(value[4] > p) {
         valueDown(4);
+    }
+    if(value[3] < n) {
+        valueUp(3);
+    } else if(value[3] > n) {
+        valueDown(3);
     }
 }
 
@@ -166,69 +180,66 @@ bool isNum(char n) {
     else return false;
 }
 
-bool isUsefulValue(char n) {
-    for(int i = 0; i < sizeof(keyValue)/sizeof(char); i++)
-        if(keyValue[i] == n)
-            return true;
-    return false;
-}
-
-void serialRead() {
-    static bool saveTemp = false;
-    static int num;
-    static char temp = 0, command = 0;
-    static bool negative = false;
-
+void serial_read() {
+    static String command = "hvrpnmia";
     if(Serial.available() > 0) {
-        temp = Serial.read();
-        Serial.print("  temp = ");
-        Serial.println(temp);
-        
-        if(isUsefulValue(temp)) {
-            command = temp;
-            num = 0;
-        } else if (temp == 45) {
-            negative = true;
-        } else if(isNum(temp)) {
-            num *= 10;
-            num += temp - 48;
-        } else if(isUsefulValue(command)) {
-            switch(command) {
-                case 'h':
-                    if(negative)
-                        num *= -1;
-                    h = constrain(num, -120, 200);
-                    break;
-                case 'v':
-                    if(negative)
-                        num += -1;
-                    v = constrain(num, -50, 200);
-                    break;
-                case 'r':
-                    r = constrain(num, 0, 180);
-                    break;
-                case 'p':
-                    p = constrain(num, 0, 90);
-                    break;
-                case 'i':
+        String inString = Serial.readStringUntil('\n');
+        Serial.println(inString);
+
+        char c;
+        String str_num = "";
+        for(int i = 0; i < inString.length(); i++) {
+            if(command.indexOf(inString[i] != -1)) {
+                if(inString[i] == 'i') {
                     initial();
-                    break;
-                case 'm':
-                    serialPrint();
-                    break;
-                case 'L':
-                    if(r > 0) r--;
-                    break;
-                case 'R':
-                    if(r < 180) r++;
-                    break;
+                } else if(inString[i] == 'm') {
+                    serial_print();
+                } else {
+                    c = inString[i];
+                    for(int j = i + 1; j < inString.length(); j++) {
+                        if(inString[j] == 45 || isNum(inString[j])) {
+                            str_num += inString[j];
+                        } else {
+                            i = j - 1;
+                            break;
+                        }
+                    }
+                    if(str_num != "")
+                        input_value(c, str_num.toInt());
+                    str_num = "";
+                }
             }
-            num = 0; command = 0; negative = false;
         }
     }
 }
 
-void serialPrint() {
+void input_value(char command, int num) {
+    switch(command) {
+        case 'h':
+            h = constrain(num, -120, 200);
+            break;
+        case 'v':
+            v = constrain(num, -50, 200);
+            break;
+        case 'r':
+            r = constrain(num, 0, 180);
+            break;
+        case 'p':
+            p = constrain(num, 0, 90);
+            break;
+        case 'n':
+            n = constrain(num, 0, 180);
+            break;
+        case 'a':
+            if(num > 0)
+                value3_auto = true;
+            else
+                value3_auto = false;
+            break;
+    }
+}
+
+void serial_print() {
     Serial.print("  value[0] = ");
     Serial.print(value[0]);
     Serial.print("  value[1] = ");
@@ -243,6 +254,8 @@ void serialPrint() {
     Serial.print(v1);
     Serial.print("  v2 = ");
     Serial.print(v2);
+    Serial.print("  v3 = ");
+    Serial.print(90 - value[1] + value[2]);
     Serial.print("  h = ");
     Serial.print(h);
     Serial.print("  v = ");
@@ -250,18 +263,15 @@ void serialPrint() {
     Serial.print("  r = ");
     Serial.print(r);
     Serial.print("  p = ");
-    Serial.println(p);
+    Serial.print(p);
+    Serial.print("  n = ");
+    Serial.println(n);
 }
 
 void loop() {
-  if(h == 999) {
-        h = position_x();
-        v = position_y();
-        r = value_init[0];
-        p = value_init[4];
+    if(value3_auto) {
+        setValue3();
     }
-
-    setValue3();
     value_change(h, v);
 
     margin();
@@ -274,5 +284,5 @@ void loop() {
         servo_move(50);
     }
     
-    serialRead();
+    serial_read();
 }
