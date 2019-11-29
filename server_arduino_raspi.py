@@ -50,39 +50,6 @@ def write_img(img):
     cv.imwrite('d:/doc/pic/test/' + name + '.jpg', img)
 
 
-def pick_sequence(socket_name):
-    print('pick sequence 0')
-    socket_name.send('pick sequence 0'.encode())
-    client_message = client_socket.recv(1024).decode()
-    if client_message == 'pick sequence 1':
-        print('pick sequence 1')
-        h = 50
-        while True:
-            received_img = decode_img(client_socket)
-            contour_area = mv.color_object_extract(received_img, area=1)
-            write_img(received_img)
-            print(contour_area)
-            if contour_area < 30000:
-                h += 30
-                message = 'h' + str(h) + ';'
-                socket_name.send(message.encode())
-            elif contour_area < 40000:
-                h += 10
-                message = 'h' + str(h) + ';'
-                socket_name.send(message.encode())
-            elif contour_area < 70000:
-                h += 5
-                message = 'h' + str(h) + ';'
-                socket_name.send(message.encode())
-            else:
-                print('pick sequence 2')
-                socket_name.send('pick sequence 2'.encode())
-                break
-            time.sleep(1)
-    else:
-        print('pick sequence 1 error')
-
-
 def read_value_list(find=None):
     ard.write(b'm;')
     while True:
@@ -101,12 +68,18 @@ def read_value_list(find=None):
         return -1
 
 
+def confirm_move():
+    msg = ard.readline().decode().strip()
+    if msg is 'y': return True
+    else: return False
+
+
 # 10.10.23.3 num 3 pos ip
 # 10.10.23.4 num 4 pos ip
 # 10.10.23.34 num 5 pos ip
 # 10.10.23.10 num 10 pos ip
 # 10.10.23.11 num 11 pos ip
-IP = '192.168.0.17'
+IP = '10.10.23.10'
 PORT = 8000
 
 # AF_INET : IPv4, AF_INET6 : IPv6, SOCK_DGRAM : UDP, SOCK_STREAM : TCP
@@ -130,9 +103,10 @@ align_h = False
 align_v = False
 move_sequence = 0
 move_bottom = False
+wait_response = False
 
-serial_port = "COM3"
-ard = serial.Serial(serial_port, 9600)
+serial_port = "COM7"
+ard = serial.Serial(serial_port, 115200)
 
 while True:
     # mv.now_time()
@@ -176,68 +150,85 @@ while True:
             if area is not -1 or set_bottom is True:
                 print(pre_center, center, end=" ")
                 received_img = object_img
-                if align_center:
-                    #if abs(center[0] - pre_center[0]) < 10:
-                    if abs(center[0] - 320) > 40:
-                        r = read_value_list('value[0]')
-                        print('r:', r, end=" ")
-                        r -= int(62.2 / 640 * (center[0] - 320) / 3 * 2)
-                        ard.write(('r' + str(r)).encode())
-                        time.sleep(1)
-                    elif abs(center[0] - 320) > 10:
-                        r = read_value_list('value[0]')
-                        print('r:', r, end=" ")
-                        r -= int(62.2 / 640 * (center[0] - 320))
-                        ard.write(('r' + str(r)).encode())
-                        time.sleep(0.7)
-                    else:
-                        print('align h center')
-                        align_h = True
-                        align_center = False
-                        ard.write('a1h100v-20'.encode())
-                        time.sleep(3.5)
-                        move_sequence = 1
-                if move_sequence:
-                    print(area)
-                    if move_sequence is 1:
-                        if abs(pre_center[1] - center[1]) < 30:
-                            if area < 50000:
-                                h = read_value_list('h')
-                                h += 40
-                                ard.write(('h' + str(h)).encode())
-                                time.sleep(0.5)
-                            elif area < 70000:
-                                h = read_value_list('h')
-                                h += 30
-                                ard.write(('h' + str(h)).encode())
-                                time.sleep(0.4)
-                            elif area < 100000:
-                                h = read_value_list('h')
-                                h += 20
-                                ard.write(('h' + str(h)).encode())
-                                time.sleep(0.3)
+                if move_sequence is 3 and area > 100000:
+                    move_sequence = 4
+                if wait_response:
+                    m = ard.readline().decode()
+                    print(m)
+                    m = m.strip()
+                    if m is 'y':
+                        wait_response = False
+                else:
+                    if align_center:
+                        if abs(center[0] - 320) > 10:
+                            r = read_value_list('value[0]')
+                            print('r:', r, end=" ")
+                            r -= int(62.2 / 640 * (center[0] - 320))
+                            ard.write(('r' + str(r)).encode())
+                            time.sleep(0.2)
+                        else:
+                            print('align h center')
+                            align_h = True
+                            align_center = False
+                            move_sequence = 1
+                        wait_response = True
+                    if move_sequence:
+                        print(area)
+                        if move_sequence is 1:
+                            ard.write('a1h100v-20'.encode())
+                            time.sleep(1)
+                            move_sequence = 15
+                        elif move_sequence is 15:
+                            ard.write('a0'.encode())
+                            move_sequence = 2
+                        elif move_sequence is 2:
+                            if abs(center[0] - 320) > 20:
+                                r = read_value_list('value[0]')
+                                print('r:', r, end=" ")
+                                r -= int(62.2 / 640 * (center[0] - 320) / 2)
+                                ard.write(('r' + str(r)).encode())
+                            elif abs(center[1] - 240) > 40:
+                                    n = read_value_list('value[3]')
+                                    print('n:', n, end=" ")
+                                    n -= int(62.2 / 640 * (center[0] - 320) / 2)
+                                    ard.write(('n' + str(n)).encode())
                             else:
-                                move_sequence += 1
-                    elif move_sequence is 2:
-                        """
-                        ard.write('p70'.encode())
-                        time.sleep(3)
-                        ard.write('a1v50h100'.encode())
-                        time.sleep(2.5)
-                        ard.write('r170'.encode())
-                        time.sleep(3)
-                        ard.write('v-30'.encode())
-                        time.sleep(2)
-                        ard.write('p0'.encode())
-                        time.sleep(2)
-                        ard.write('v50'.encode())
-                        time.sleep(2)
-                        ard.write('r90v100h0'.encode())
-                        """
-                        ard.write('s'.encode())
-                        move_bottom = False
-                        extract_object = False
-                        move_sequence = 0
+                                move_sequence = 3
+                        elif move_sequence is 3:
+                            if abs(pre_center[1] - center[1]) < 30:
+                                if area < 50000:
+                                    h = read_value_list('h')
+                                    h += 40
+                                    ard.write(('h' + str(h)).encode())
+                                elif area < 70000:
+                                    h = read_value_list('h')
+                                    h += 30
+                                    ard.write(('h' + str(h)).encode())
+                                elif area < 100000:
+                                    h = read_value_list('h')
+                                    h += 20
+                                    ard.write(('h' + str(h)).encode())
+                        elif move_sequence is 4:
+                            """
+                            ard.write('p70'.encode())
+                            time.sleep(3)
+                            ard.write('a1v50h100'.encode())
+                            time.sleep(2.5)
+                            ard.write('r170'.encode())
+                            time.sleep(3)
+                            ard.write('v-30'.encode())
+                            time.sleep(2)
+                            ard.write('p0'.encode())
+                            time.sleep(2)
+                            ard.write('v50'.encode())
+                            time.sleep(2)
+                            ard.write('r90v100h0'.encode())
+                            """
+                            ard.write('s'.encode())
+                            move_bottom = False
+                            extract_object = False
+                            move_sequence = 0
+                        wait_response = True
                 pre_center = [int((pre_center[0] + center[0]) / 2), int((pre_center[1] + center[1]) / 2)]
 
         cv.imshow('img', received_img)
@@ -250,6 +241,11 @@ while True:
             sequence = 1
             continue
         ard.write(command)
+    elif sequence is 5:
+        # serial read print
+        ard.write('q'.encode())
+        msg = ard.readline().decode().strip()
+        print(msg)
     elif sequence is 9:
         print('sequence : 9')
         client_socket.send('exit'.encode())
