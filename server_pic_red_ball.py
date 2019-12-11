@@ -2,12 +2,8 @@
 import socket
 import cv2 as cv
 import numpy as np
-from multiprocessing import Queue
-from _thread import *
 import m_vision as mv
 from datetime import datetime
-import sys
-import math
 import time
 import serial
 
@@ -30,18 +26,6 @@ def decode_img(socket_name):
     img_data = np.fromstring(string_data, dtype=np.uint8)
     decode_img_data = cv.imdecode(img_data, 1)
     return decode_img_data
-
-
-def show_angle_img(img):
-    x = 640 / 62.2 * 10
-    cv.line(img, (320, 0), (320, 480), (0, 0, 255))
-    x0 = int(x)
-    n = 0
-    while x0 < 640:
-        x0 = int(x * n)
-        n += 1
-        cv.line(img, (x0, 0), (x0, 480), (0, 0, 255))
-    cv.imshow('line img', img)
 
 
 def write_img(img):
