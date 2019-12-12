@@ -159,6 +159,7 @@ while True:
                         n += 10
                         ard.write(('n' + str(n)).encode())
                         time.sleep(0.2)
+                        wait_response = True
 
                 if move_sequence is 1:
                     print('move_sequence 1')
@@ -216,6 +217,7 @@ while True:
                         wait_response = True
                     else:
                         move_sequence = 6
+                    time.sleep(0.2)
 
                 elif move_sequence is 6:
                     ard.write('s'.encode())
